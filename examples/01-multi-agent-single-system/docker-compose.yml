@@ -1,0 +1,18 @@
+services:
+  agent:
+    build:
+      context: ../..
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        EXAMPLE_DIR: examples/01-multi-agent-single-system
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../.env
+    environment:
+      - VERBOSE=${VERBOSE:-true}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

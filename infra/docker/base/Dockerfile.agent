@@ -1,0 +1,33 @@
+FROM python:3.14-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+ARG EXAMPLE_DIR=examples/01-multi-agent-single-system
+
+COPY pyproject.toml uv.lock ./
+COPY libs/ libs/
+COPY ${EXAMPLE_DIR}/pyproject.toml ${EXAMPLE_DIR}/pyproject.toml
+
+RUN uv sync --frozen --package $(basename ${EXAMPLE_DIR}) --no-dev
+
+# ---
+
+FROM python:3.14-slim AS runtime
+
+WORKDIR /app
+
+ARG EXAMPLE_DIR=examples/01-multi-agent-single-system
+
+COPY --from=builder /app/.venv /app/.venv
+COPY libs/common/src/agent_common/ /app/agent_common/
+COPY ${EXAMPLE_DIR}/src/ /app/src/
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]

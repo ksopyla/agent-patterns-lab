@@ -1,0 +1,20 @@
+[project]
+name = "example-01-multi-agent-single-system"
+version = "0.1.0"
+description = "Lesson 1: Multi-Agent System as a Single System with LangGraph"
+requires-python = ">=3.14"
+dependencies = [
+    "langgraph>=0.4",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-anthropic>=0.3",
+    "langsmith>=0.3",
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "pydantic>=2.0",
+    "httpx>=0.28",
+    "agent-common",
+]
+
+[tool.uv.sources]
+agent-common = { workspace = true }

@@ -1,0 +1,53 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      example:
+        description: "Example to deploy (e.g., 06-azure-deployment)"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE="${{ secrets.ACR_NAME }}.azurecr.io/agent-patterns-lab/${{ inputs.example }}:${{ github.sha }}"
+          docker build \
+            -f infra/docker/base/Dockerfile.agent \
+            --build-arg EXAMPLE_DIR=examples/${{ inputs.example }} \
+            -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ inputs.example }} \
+            --resource-group agent-patterns-lab-rg \
+            --image "${{ secrets.ACR_NAME }}.azurecr.io/agent-patterns-lab/${{ inputs.example }}:${{ github.sha }}"

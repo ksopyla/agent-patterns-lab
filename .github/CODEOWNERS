@@ -1,0 +1,9 @@
+# Default owner for everything
+* @ksopyla
+
+# Infrastructure
+infra/ @ksopyla
+.github/ @ksopyla
+
+# Shared libraries
+libs/ @ksopyla

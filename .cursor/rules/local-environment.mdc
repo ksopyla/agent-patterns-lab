@@ -1,0 +1,35 @@
+---
+description: Local development environment details for Windows
+alwaysApply: true
+---
+
+# Local Environment
+
+## OS and Shell
+- Windows 11 (win32 10.0.26200)
+- Default shell: **PowerShell** -- all terminal commands must use PowerShell syntax
+- Use `New-Item -ItemType Directory -Force -Path "dir"` instead of `mkdir -p`
+- Use `Select-String` instead of `grep`
+- Use semicolons or `&&` to chain commands, not `\` line continuations
+
+## Python Version Management
+- Python versions managed exclusively by **uv** (`uv python install 3.14`)
+- Do NOT use pyenv, pyenv-win, or system Python
+- uv is installed at `C:\Users\krzys\.local\bin\uv.exe`
+- If uv is not on PATH, add it: `$env:Path = "C:\Users\krzys\.local\bin;$env:Path"`
+- Project is pinned to Python 3.14 via `.python-version` file
+
+## Paths
+- Workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
+- uv binary: `C:\Users\krzys\.local\bin\uv.exe`
+- uv-managed Pythons: `C:\Users\krzys\AppData\Roaming\uv\python\`
+
+## Repository
+- GitHub: `git@github.com:ksopyla/agent-patterns-lab.git`
+- Branch: `main`
+- Remote: `origin`
+
+## LLM Providers
+- Primary: Azure OpenAI (GPT-5 deployment)
+- Secondary: Anthropic (Claude 4.6 Opus)
+- Configure via `.env` file (copy from `.env.example`)
