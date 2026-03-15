@@ -74,6 +74,35 @@ Every example supports `VERBOSE=true` (set in `.env`) which logs:
 - Inter-agent message payloads
 - LangSmith trace IDs for quick lookup
 
+## Testing
+
+Run the full suite (unit + API + e2e across all examples) with:
+
+```bash
+python scripts/testing/run_test_suite.py
+```
+
+Faster local run without coverage:
+
+```bash
+python scripts/testing/run_test_suite.py --no-coverage
+```
+
+Install local git hooks (enforces tests before each commit):
+
+```bash
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg
+```
+
+Test structure for each example:
+
+```text
+examples/NN-name/tests/
+├── unit/
+├── api/
+└── e2e/
+```
+
 ## Blog
 
 Detailed write-ups for each lesson at [ai.ksopyla.com](https://ai.ksopyla.com).

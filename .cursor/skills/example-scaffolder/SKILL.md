@@ -32,8 +32,12 @@ examples/NN-name/
 │   ├── app.py              # FastAPI application
 │   └── config.py           # Settings and env var loading
 └── tests/
-    ├── __init__.py
-    └── test_agents.py
+    ├── unit/
+    │   └── test_*.py
+    ├── api/
+    │   └── test_*.py
+    └── e2e/
+        └── test_*.py
 ```
 
 ## pyproject.toml Template
@@ -159,5 +163,5 @@ After scaffolding, verify:
 - [ ] `src/app.py` has `/health` endpoint
 - [ ] `src/app.py` calls `setup_tracing()` in lifespan
 - [ ] Agent nodes use `verbose_log()` for debug output
-- [ ] `tests/test_agents.py` has at least a placeholder test
+- [ ] `tests/unit`, `tests/api`, and `tests/e2e` all exist
 - [ ] `README.md` follows the documentation-writer template

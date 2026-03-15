@@ -1,4 +1,4 @@
-"""Tests for the multi-agent pipeline."""
+"""Unit tests for the shared agent state."""
 
 from __future__ import annotations
 

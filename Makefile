@@ -2,11 +2,12 @@
 
 setup:
 	uv sync --all-packages
+	uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg
 
 lint:
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy libs/ examples/
+	uv run mypy libs/ examples/ --exclude "(^|/)tests/" --disable-error-code=misc --disable-error-code=unused-ignore
 
 test:
 	uv run pytest

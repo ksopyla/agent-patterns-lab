@@ -25,9 +25,7 @@ async def writer_node(state: AgentState) -> dict[str, str]:
     response = await llm.ainvoke(
         [
             SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(
-                content=f"Original request: {state['input']}\n\nPlan:\n{plan}\n\nResearch:\n{research}"
-            ),
+            HumanMessage(content=f"Original request: {state['input']}\n\nPlan:\n{plan}\n\nResearch:\n{research}"),
         ]
     )
 

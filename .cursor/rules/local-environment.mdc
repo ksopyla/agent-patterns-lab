@@ -15,9 +15,17 @@ alwaysApply: true
 ## Python Version Management
 - Python versions managed exclusively by **uv** (`uv python install 3.14`)
 - Do NOT use pyenv, pyenv-win, or system Python
-- uv is installed at `C:\Users\krzys\.local\bin\uv.exe`
-- If uv is not on PATH, add it: `$env:Path = "C:\Users\krzys\.local\bin;$env:Path"`
+- uv executable location: `C:\Users\krzys\.local\bin\uv.exe`
+- Preferred command style in chats and terminal commands: use `uv ...` (not full `uv.exe` path)
+- Verify with: `uv --version`
+- If `uv` is unexpectedly missing, restart Cursor/terminal to reload PATH before using any fallback
+- Fallback only if PATH cannot be updated: `& "C:\Users\krzys\.local\bin\uv.exe" ...`
 - Project is pinned to Python 3.14 via `.python-version` file
+
+## uv Command Consistency
+- Use `uv` for dependency and environment operations across all chats
+- Example (preferred): `uv add --dev pytest-cov`
+- Do not mix styles within one instruction set (avoid switching between `uv` and full path unless fallback is required)
 
 ## Paths
 - Workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
