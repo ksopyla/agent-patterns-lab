@@ -1,0 +1,55 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-env.mjs",
+        "npx", "-y", "@modelcontextprotocol/server-github"
+      ]
+    },
+    "docker": {
+      "command": "uv",
+      "args": ["tool", "run", "mcp-server-docker"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": ".cursor/memory/memory.json"
+      }
+    },
+    "supabase": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-env.mjs",
+        "npx", "-y", "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=${SUPABASE_PROJECT_REF}"
+      ]
+    },
+    "postgres": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-env.mjs",
+        "npx", "-y", "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL}"
+      ]
+    },
+    "auth0": {
+      "command": "npx",
+      "args": ["-y", "@auth0/auth0-mcp-server", "run"]
+    },
+    "azure": {
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"]
+    }
+  }
+}
