@@ -17,6 +17,8 @@ Target 300-500 words."""
 
 async def writer_node(state: AgentState) -> dict[str, str]:
     """Write the final output based on plan and research."""
+    plan = state.get("plan", "")
+    research = state.get("research", "")
     verbose_log("Writer", "Writing final output")
 
     llm = get_chat_model()
@@ -24,9 +26,7 @@ async def writer_node(state: AgentState) -> dict[str, str]:
         [
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(
-                content=(
-                    f"Original request: {state['input']}\n\nPlan:\n{state['plan']}\n\nResearch:\n{state['research']}"
-                )
+                content=f"Original request: {state['input']}\n\nPlan:\n{plan}\n\nResearch:\n{research}"
             ),
         ]
     )

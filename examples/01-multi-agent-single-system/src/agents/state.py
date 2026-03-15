@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class AgentState(TypedDict, total=False):
-    input: str
+    input: Required[str]
     plan: str
     research: str
     output: str
