@@ -46,12 +46,14 @@ async def test_news_scanner_returns_news(monkeypatch: pytest.MonkeyPatch) -> Non
     model = _DummyModel("Arbitrum announced Orbit chains. TVL exceeded $10B.")
     monkeypatch.setattr(news_scanner, "get_chat_model", lambda: model)
 
-    mock_search = AsyncMock(return_value=[{"title": "Arbitrum news", "snippet": "Orbit chains launched"}])
+    mock_search = AsyncMock()
+    mock_search.ainvoke = AsyncMock(return_value=[{"title": "Arbitrum news", "snippet": "Orbit chains launched"}])
     with patch.object(news_scanner, "DuckDuckGoSearchResults", return_value=mock_search):
         result = await news_scanner.news_scanner_node({"input": "Research Arbitrum", "plan": "1. News\n2. Tech"})
 
     assert "Orbit chains" in result["news"]
     assert len(model.calls) == 1
+    mock_search.ainvoke.assert_called_once()
 
 
 @pytest.mark.asyncio

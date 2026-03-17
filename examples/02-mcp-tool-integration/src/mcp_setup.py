@@ -32,8 +32,9 @@ async def init_mcp() -> None:
     config = _get_mcp_config()
     verbose_log("MCP", f"Connecting to MCP servers: {list(config.keys())}")
 
-    _mcp_client = MultiServerMCPClient(config)  # type: ignore[arg-type]
-    tools: list[BaseTool] = await _mcp_client.get_tools()  # type: ignore[misc]
+    client: MultiServerMCPClient = MultiServerMCPClient(config)  # type: ignore[arg-type]
+    _mcp_client = await client.__aenter__()
+    tools: list[BaseTool] = _mcp_client.get_tools()  # type: ignore[misc]
     _mcp_tools = {t.name: t for t in tools}
     verbose_log("MCP", f"Loaded {len(_mcp_tools)} tools: {list(_mcp_tools.keys())}")
 
@@ -42,6 +43,7 @@ async def close_mcp() -> None:
     """Disconnect from all MCP servers."""
     global _mcp_client, _mcp_tools  # noqa: PLW0603
     if _mcp_client:
+        await _mcp_client.__aexit__(None, None, None)
         _mcp_client = None
         _mcp_tools = {}
         verbose_log("MCP", "Disconnected from MCP servers")
