@@ -28,7 +28,7 @@ async def test_init_mcp_enters_async_context_manager() -> None:
 
     mock_client = AsyncMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.get_tools = MagicMock(return_value=fake_tools)
+    mock_client.get_tools = AsyncMock(return_value=fake_tools)
 
     with patch.object(mcp_setup, "MultiServerMCPClient", return_value=mock_client):
         await mcp_setup.init_mcp()
