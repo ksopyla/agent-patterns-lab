@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
 
 
-def build_graph() -> CompiledStateGraph:
+def build_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
     """Build and compile the full crypto intelligence pipeline graph."""
     verbose_log(
         "System",

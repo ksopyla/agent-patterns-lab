@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pydantic import SecretStr
+
 from agent_common.config import get_settings
 
 if TYPE_CHECKING:
@@ -28,7 +30,7 @@ def get_chat_model(provider: str | None = None, **kwargs: object) -> BaseChatMod
 
         return AzureChatOpenAI(
             azure_endpoint=settings.azure_openai_endpoint,
-            api_key=settings.azure_openai_api_key,
+            api_key=SecretStr(settings.azure_openai_api_key),
             azure_deployment=settings.azure_openai_deployment,
             api_version=settings.azure_openai_api_version,
             **kwargs,  # type: ignore[arg-type]
@@ -38,7 +40,7 @@ def get_chat_model(provider: str | None = None, **kwargs: object) -> BaseChatMod
         from langchain_anthropic import ChatAnthropic
 
         return ChatAnthropic(
-            api_key=settings.anthropic_api_key,
+            api_key=SecretStr(settings.anthropic_api_key),
             model_name=settings.anthropic_model,
             **kwargs,  # type: ignore[arg-type]
         )

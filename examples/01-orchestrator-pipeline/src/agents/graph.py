@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
 
 
-def build_graph() -> CompiledStateGraph:
+def build_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
     """Build and compile the crypto intelligence pipeline graph."""
     verbose_log("System", "Building agent graph: research_planner -> news_scanner -> intelligence_compiler")
 

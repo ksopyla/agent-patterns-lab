@@ -44,7 +44,8 @@ async def test_news_scanner_returns_analyzed_news(monkeypatch: pytest.MonkeyPatc
     model = _DummyModel("Arbitrum announced partnership with X. Community sentiment is bullish.")
     monkeypatch.setattr(news_scanner, "get_chat_model", lambda: model)
 
-    mock_search = AsyncMock(return_value=[{"title": "Arbitrum news", "snippet": "Big partnership"}])
+    mock_search = AsyncMock()
+    mock_search.ainvoke = AsyncMock(return_value=[{"title": "Arbitrum news", "snippet": "Big partnership"}])
     with patch.object(news_scanner, "DuckDuckGoSearchResults", return_value=mock_search):
         state = {"input": "Research Arbitrum", "plan": "1. Recent news\n2. Partnerships"}
         result = await news_scanner.news_scanner_node(state)

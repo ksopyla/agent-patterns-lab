@@ -47,24 +47,15 @@ def discover_example_test_paths() -> list[Path]:
     return paths
 
 
-def build_pytest_command(include_coverage: bool) -> list[str]:
-    """Build pytest command with optional coverage flags."""
+def build_pytest_command(test_path: Path, *, include_coverage: bool) -> list[str]:
+    """Build pytest command for a single test directory."""
     uv_bin = _resolve_uv_binary()
     command = [uv_bin, "run", "pytest", "--tb=short", "-q"]
 
     if not include_coverage:
         command.append("--no-cov")
 
-    test_paths = discover_example_test_paths()
-    libs_tests = LIBS_DIR / "common" / "tests"
-    if libs_tests.is_dir():
-        test_paths.append(libs_tests)
-
-    if not test_paths:
-        msg = "No tests found in examples/*/tests or libs/common/tests."
-        raise RuntimeError(msg)
-
-    command.extend(str(path.relative_to(ROOT)) for path in test_paths)
+    command.append(str(test_path.relative_to(ROOT)))
     return command
 
 
@@ -80,10 +71,28 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    command = build_pytest_command(include_coverage=not args.no_coverage)
-    print(f"Running: {' '.join(command)}")
-    result = subprocess.run(command, cwd=ROOT, check=False)
-    return result.returncode
+    test_paths = discover_example_test_paths()
+    libs_tests = LIBS_DIR / "common" / "tests"
+    if libs_tests.is_dir():
+        test_paths.append(libs_tests)
+
+    if not test_paths:
+        msg = "No tests found in examples/*/tests or libs/common/tests."
+        raise RuntimeError(msg)
+
+    worst_rc = 0
+    for test_path in test_paths:
+        rel = test_path.relative_to(ROOT)
+        command = build_pytest_command(test_path, include_coverage=not args.no_coverage)
+        print(f"\npytest {rel}/")
+        result = subprocess.run(command, cwd=ROOT, check=False)
+        rc = result.returncode
+        if rc == 5:
+            print(f"  (no tests collected in {rel}, skipping)")
+            continue
+        worst_rc = max(worst_rc, rc)
+
+    return worst_rc
 
 
 if __name__ == "__main__":

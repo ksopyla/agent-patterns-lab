@@ -7,6 +7,7 @@ Connects to the free CoinGecko API (no API key required, rate-limited ~30 req/mi
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -16,12 +17,12 @@ COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 mcp = FastMCP("crypto-data")
 
 
-async def _coingecko_get(path: str, params: dict[str, str] | None = None) -> dict | list:
+async def _coingecko_get(path: str, params: dict[str, str] | None = None) -> Any:
     """Make a GET request to CoinGecko API."""
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(f"{COINGECKO_BASE}{path}", params=params or {})
         resp.raise_for_status()
-        return resp.json()
+        return resp.json()  # noqa: ANN401
 
 
 @mcp.tool()
