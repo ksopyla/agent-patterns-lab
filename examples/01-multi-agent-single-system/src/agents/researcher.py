@@ -17,7 +17,9 @@ Be concise but informative. Focus on practical, actionable information."""
 
 async def researcher_node(state: AgentState) -> dict[str, str]:
     """Research information for each section in the plan."""
-    plan = state["plan"]
+    plan = state.get("plan", "")
+    if not plan:
+        verbose_log("Researcher", "Warning: no plan provided, proceeding with empty plan")
     verbose_log("Researcher", "Researching based on plan")
 
     llm = get_chat_model()
