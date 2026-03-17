@@ -9,6 +9,11 @@ alwaysApply: true
 - When code changes in `examples/` or `libs/`, update tests as needed.
 - Keep test structure per example as `tests/unit`, `tests/api`, and `tests/e2e`.
 
+## Canonical Commands
+- Tests: `uv run python scripts/testing/run_test_suite.py`
+- Type check: `uv run python scripts/linting/run_mypy.py`
+- Never run `mypy` directly across multiple examples (causes duplicate module errors).
+- CI (`ci.yml`) must use the same wrapper scripts -- never inline raw tool commands.
 
 ## Skill Trigger
 - Use the `tester` skill for test planning, implementation, and maintenance.

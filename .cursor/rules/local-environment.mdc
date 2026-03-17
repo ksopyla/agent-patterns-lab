@@ -33,6 +33,18 @@ alwaysApply: true
 - example folders: `agent-patterns-lab\examples\<example-name>`
 - 
 
+## GitHub CLI (`gh`)
+- Installed: `gh` v2.88.1, authenticated as `ksopyla`
+- Auth scopes: `repo`, `gist`, `read:org`, `admin:public_key`
+- Git operations protocol: SSH
+- Use `gh` for GitHub operations: PRs, issues, actions, releases, API calls
+- Prefer `gh` CLI over the GitHub MCP server when both can do the job -- CLI is faster and more flexible
+- Examples:
+  - `gh pr create --title "..." --body "..."`
+  - `gh issue list --label bug`
+  - `gh run list --workflow ci.yml`
+  - `gh api repos/{owner}/{repo}/actions/runs` for arbitrary API calls
+
 ## Repository
 - GitHub: `git@github.com:ksopyla/agent-patterns-lab.git`
 - Branch: `main` and `dev` (for development)
