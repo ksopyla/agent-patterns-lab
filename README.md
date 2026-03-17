@@ -37,7 +37,9 @@ Each step solves a real architectural problem. No artificial exercises -- the do
   Intelligence Compiler
 ```
 
-Team 1 researches fundamentals (news, team, roadmap, community). Team 2 crunches numbers (price, indicators, support/resistance). Team 3 combines both into actionable trading signals. Each team deploys independently, communicates via A2A protocol, and authenticates across trust boundaries.
+- Team 1 researches fundamentals (news, team, roadmap, community).
+- Team 2 crunches numbers (price, indicators, support/resistance).
+- Team 3 combines both into actionable trading signals. Each team deploys independently, communicates via A2A protocol, and authenticates across trust boundaries.
 
 ## Quick Start
 

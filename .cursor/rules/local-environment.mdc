@@ -28,16 +28,15 @@ alwaysApply: true
 - Do not mix styles within one instruction set (avoid switching between `uv` and full path unless fallback is required)
 
 ## Paths
-- Workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
-- uv binary: `C:\Users\krzys\.local\bin\uv.exe`
-- uv-managed Pythons: `C:\Users\krzys\AppData\Roaming\uv\python\`
+- local project workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
+- main curriculum: `agent-patterns-lab\docs\curriculum.md`
+- example folders: `agent-patterns-lab\examples\<example-name>`
+- 
 
 ## Repository
 - GitHub: `git@github.com:ksopyla/agent-patterns-lab.git`
-- Branch: `main`
+- Branch: `main` and `dev` (for development)
 - Remote: `origin`
 
-## LLM Providers
-- Primary: Azure OpenAI (GPT-5 deployment)
-- Secondary: Anthropic (Claude 4.6 Opus)
+## Secret Management
 - Configure via `.env` file (copy from `.env.example`)
