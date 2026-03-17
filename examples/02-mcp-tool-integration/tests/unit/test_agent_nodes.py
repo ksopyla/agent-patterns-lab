@@ -59,9 +59,12 @@ async def test_project_profiler_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch) 
     model = _DummyModel("Arbitrum is an L2 optimistic rollup. Price: $1.23, Market cap: $4.5B")
     monkeypatch.setattr(project_profiler, "get_chat_model", lambda: model)
 
-    mock_search = AsyncMock(return_value='[{"id": "arbitrum", "name": "Arbitrum", "symbol": "ARB"}]')
-    mock_info = AsyncMock(return_value='{"name": "Arbitrum", "description": "L2 rollup"}')
-    mock_price = AsyncMock(return_value='{"price": 1.23, "market_cap": 4500000000}')
+    mock_search = AsyncMock()
+    mock_search.ainvoke = AsyncMock(return_value='[{"id": "arbitrum", "name": "Arbitrum", "symbol": "ARB"}]')
+    mock_info = AsyncMock()
+    mock_info.ainvoke = AsyncMock(return_value='{"name": "Arbitrum", "description": "L2 rollup"}')
+    mock_price = AsyncMock()
+    mock_price.ainvoke = AsyncMock(return_value='{"price": 1.23, "market_cap": 4500000000}')
 
     monkeypatch.setattr(
         project_profiler,
@@ -86,8 +89,10 @@ async def test_community_analyst_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch)
     model = _DummyModel("Community Health: Strong. Active GitHub with 500+ contributors.")
     monkeypatch.setattr(community_analyst, "get_chat_model", lambda: model)
 
-    mock_search = AsyncMock(return_value='[{"id": "arbitrum", "name": "Arbitrum", "symbol": "ARB"}]')
-    mock_info = AsyncMock(
+    mock_search = AsyncMock()
+    mock_search.ainvoke = AsyncMock(return_value='[{"id": "arbitrum", "name": "Arbitrum", "symbol": "ARB"}]')
+    mock_info = AsyncMock()
+    mock_info.ainvoke = AsyncMock(
         return_value='{"community_data": {"twitter_followers": 500000}, "developer_data": {"commits": 1200}}'
     )
 
