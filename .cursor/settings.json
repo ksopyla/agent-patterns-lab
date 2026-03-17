@@ -1,0 +1,13 @@
+{
+  "plugins": {
+    "supabase": {
+      "enabled": true
+    },
+    "continual-learning": {
+      "enabled": true
+    },
+    "context7-plugin": {
+      "enabled": true
+    }
+  }
+}

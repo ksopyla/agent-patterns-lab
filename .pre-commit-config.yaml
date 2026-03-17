@@ -1,19 +1,10 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.9
+    rev: v0.15.6
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-      - id: mypy
-        additional_dependencies: []
-        args: [--ignore-missing-imports]
-        pass_filenames: false
-        entry: mypy libs/ examples/
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0

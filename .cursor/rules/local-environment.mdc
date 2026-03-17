@@ -15,21 +15,40 @@ alwaysApply: true
 ## Python Version Management
 - Python versions managed exclusively by **uv** (`uv python install 3.14`)
 - Do NOT use pyenv, pyenv-win, or system Python
-- uv is installed at `C:\Users\krzys\.local\bin\uv.exe`
-- If uv is not on PATH, add it: `$env:Path = "C:\Users\krzys\.local\bin;$env:Path"`
+- uv executable location: `C:\Users\krzys\.local\bin\uv.exe`
+- Preferred command style in chats and terminal commands: use `uv ...` (not full `uv.exe` path)
+- Verify with: `uv --version`
+- If `uv` is unexpectedly missing, restart Cursor/terminal to reload PATH before using any fallback
+- Fallback only if PATH cannot be updated: `& "C:\Users\krzys\.local\bin\uv.exe" ...`
 - Project is pinned to Python 3.14 via `.python-version` file
 
+## uv Command Consistency
+- Use `uv` for dependency and environment operations across all chats
+- Example (preferred): `uv add --dev pytest-cov`
+- Do not mix styles within one instruction set (avoid switching between `uv` and full path unless fallback is required)
+
 ## Paths
-- Workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
-- uv binary: `C:\Users\krzys\.local\bin\uv.exe`
-- uv-managed Pythons: `C:\Users\krzys\AppData\Roaming\uv\python\`
+- local project workspace: `C:\Users\krzys\Dev Projects\agent-patterns-lab`
+- main curriculum: `agent-patterns-lab\docs\curriculum.md`
+- example folders: `agent-patterns-lab\examples\<example-name>`
+- 
+
+## GitHub CLI (`gh`)
+- Installed: `gh` v2.88.1, authenticated as `ksopyla`
+- Auth scopes: `repo`, `gist`, `read:org`, `admin:public_key`
+- Git operations protocol: SSH
+- Use `gh` for GitHub operations: PRs, issues, actions, releases, API calls
+- Prefer `gh` CLI over the GitHub MCP server when both can do the job -- CLI is faster and more flexible
+- Examples:
+  - `gh pr create --title "..." --body "..."`
+  - `gh issue list --label bug`
+  - `gh run list --workflow ci.yml`
+  - `gh api repos/{owner}/{repo}/actions/runs` for arbitrary API calls
 
 ## Repository
 - GitHub: `git@github.com:ksopyla/agent-patterns-lab.git`
-- Branch: `main`
+- Branch: `main` and `dev` (for development)
 - Remote: `origin`
 
-## LLM Providers
-- Primary: Azure OpenAI (GPT-5 deployment)
-- Secondary: Anthropic (Claude 4.6 Opus)
+## Secret Management
 - Configure via `.env` file (copy from `.env.example`)

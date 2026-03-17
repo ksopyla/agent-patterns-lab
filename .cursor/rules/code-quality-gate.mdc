@@ -1,0 +1,34 @@
+---
+description: Enforce project conventions when editing agent source code
+globs: examples/*/src/**/*.py
+alwaysApply: false
+---
+
+# Code Quality Gate
+
+When editing Python files in `examples/*/src/`, verify these conventions:
+
+## FastAPI App (`app.py`)
+- Has `/health` endpoint returning `{"status": "ok"}`
+- Uses `lifespan` context manager (not `@app.on_event`)
+- Calls `setup_tracing()` in lifespan
+- All endpoints are `async def`
+- Request/response use Pydantic models
+
+## Agent Nodes
+- Type hints on all function signatures and variables
+- Uses `verbose_log("AgentName", ...)` for debug output
+- State is a `TypedDict` or Pydantic model (not plain dict)
+- Agent functions are async: `async def node(state: State) -> dict`
+- No bare `except:` -- catch specific exceptions
+
+## Imports
+- `agent_common` imported from workspace (`from agent_common.tracing import ...`)
+- No relative imports crossing package boundaries
+
+## Quick Checklist
+- [ ] Type hints on every function
+- [ ] `async def` for all agent nodes and endpoints
+- [ ] `verbose_log()` calls in agent logic
+- [ ] `setup_tracing()` called in app lifespan
+- [ ] `/health` endpoint present
