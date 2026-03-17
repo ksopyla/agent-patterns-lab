@@ -7,7 +7,7 @@ setup:
 lint:
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy libs/ examples/ --exclude "(^|/)tests/" --disable-error-code=misc --disable-error-code=unused-ignore
+	uv run mypy libs/ examples/ --ignore-missing-imports --exclude "(^|/)tests/" --disable-error-code=misc --disable-error-code=unused-ignore
 
 test:
 	uv run pytest

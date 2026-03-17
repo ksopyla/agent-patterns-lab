@@ -16,6 +16,11 @@ Trigger this skill when:
 - Improving confidence before commit or pull request
 - Investigating regressions in pipeline flow or API behavior
 
+## Safety Rules
+- Do not rely on live LLM providers in tests.
+- Prefer deterministic tests with mocks/stubs.
+- Keep API and e2e tests in CI-safe form (no external services required unless explicitly marked and isolated).
+
 ## Test Architecture Standard
 
 For every example, keep tests in:
