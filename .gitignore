@@ -201,6 +201,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .cursor/memory/
+.cursor/hooks/state/
 
 # Marimo
 marimo/_static/
