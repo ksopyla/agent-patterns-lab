@@ -20,6 +20,11 @@ Trigger this skill when:
 - Do not rely on live LLM providers in tests.
 - Prefer deterministic tests with mocks/stubs.
 - Keep API and e2e tests in CI-safe form (no external services required unless explicitly marked and isolated).
+- When mocking LangChain/MCP tool objects, configure `.ainvoke` explicitly:
+  `mock_tool.ainvoke = AsyncMock(return_value='...')`.
+  Do NOT use `AsyncMock(return_value='...')` alone -- that configures the mock
+  as a callable, but agent code calls `tool.ainvoke(...)`, which creates an
+  unconfigured child mock returning a MagicMock instead of the expected value.
 
 ## Test Architecture Standard
 
