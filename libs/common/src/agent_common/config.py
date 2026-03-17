@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     langsmith_project: str = "agent-patterns-lab"
     langsmith_tracing: bool = True
 
-    # Auth0 (Lesson 4+)
+    # Auth0 (Pattern 07+)
     auth0_domain: str = ""
     auth0_client_id: str = ""
     auth0_client_secret: str = ""

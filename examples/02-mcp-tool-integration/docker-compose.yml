@@ -1,0 +1,37 @@
+services:
+  crypto-data-mcp:
+    build:
+      context: ../..
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        EXAMPLE_DIR: examples/02-mcp-tool-integration
+    command: ["python", "-m", "src.mcp_servers.crypto_data"]
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8001/sse').status_code"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        EXAMPLE_DIR: examples/02-mcp-tool-integration
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../.env
+    environment:
+      - VERBOSE=${VERBOSE:-true}
+      - CRYPTO_DATA_MCP_URL=http://crypto-data-mcp:8001/sse
+    depends_on:
+      crypto-data-mcp:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

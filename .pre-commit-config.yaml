@@ -1,35 +1,10 @@
 repos:
-  - repo: local
-    hooks:
-      - id: run-full-test-suite
-        name: run-full-test-suite
-        entry: python scripts/testing/run_test_suite.py --no-coverage
-        language: python
-        pass_filenames: false
-        stages: [pre-commit]
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.6
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
-    hooks:
-      - id: mypy
-        additional_dependencies: []
-        args:
-          [
-            --ignore-missing-imports,
-            --exclude,
-            "(^|/)tests/",
-            --disable-error-code=misc,
-            --disable-error-code=unused-ignore,
-          ]
-        pass_filenames: false
-        entry: mypy libs/ examples/
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0

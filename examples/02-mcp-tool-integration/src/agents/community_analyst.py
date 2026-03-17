@@ -1,0 +1,62 @@
+"""Community Analyst agent -- analyzes community and developer activity via MCP.
+
+Uses the crypto-data MCP server to access community/developer stats and
+combines with LLM analysis for a community health assessment.
+"""
+
+from __future__ import annotations
+
+import json
+
+from agent_common.llm import get_chat_model
+from agent_common.tracing import verbose_log
+from langchain_core.messages import HumanMessage, SystemMessage
+
+from src.agents.state import AgentState
+from src.mcp_setup import get_mcp_tool
+
+SYSTEM_PROMPT = """\
+You are a crypto community analyst. You receive community and developer data
+about a crypto project from CoinGecko.
+
+Assess the project's community health:
+- Developer activity: GitHub commits, contributors, forks, stars
+- Community size: Twitter followers, Reddit subscribers, Telegram users
+- Activity trends: is the community growing or shrinking?
+- Red flags: low developer activity, declining community, etc.
+
+Provide a brief community health rating (Strong / Moderate / Weak) with justification."""
+
+
+async def community_analyst_node(state: AgentState) -> dict[str, str]:
+    """Analyze community and developer activity using MCP tools."""
+    user_input = state["input"]
+    verbose_log("CommunityAnalyst", f"Analyzing community for: {user_input[:80]}")
+
+    search_tool = get_mcp_tool("search_coins")
+    search_results = await search_tool.ainvoke({"query": user_input})
+
+    coins = json.loads(search_results) if isinstance(search_results, str) else search_results
+    coin_id = coins[0]["id"] if coins else user_input.lower().replace(" ", "-")
+
+    info_tool = get_mcp_tool("get_coin_info")
+    coin_info = await info_tool.ainvoke({"coin_id": coin_id})
+    verbose_log("CommunityAnalyst", "Got community/developer data via MCP")
+
+    llm = get_chat_model()
+    response = await llm.ainvoke(
+        [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(
+                content=(
+                    f"Project: {user_input}\n\n"
+                    f"CoinGecko project data (includes community_data and developer_data):\n{coin_info}"
+                )
+            ),
+        ]
+    )
+
+    community = str(response.content)
+    verbose_log("CommunityAnalyst", f"Community analysis complete ({len(community)} chars)")
+
+    return {"community": community}

@@ -16,7 +16,7 @@ fmt:
 	uv run ruff format .
 	uv run ruff check --fix .
 
-# Usage: make example EX=01-multi-agent-single-system
+# Usage: make example EX=01-orchestrator-pipeline
 example:
 	docker compose -f examples/$(EX)/docker-compose.yml up --build
 

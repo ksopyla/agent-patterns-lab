@@ -1,45 +1,47 @@
-# Agent Patterns Lab
+# Agent Design Patterns Lab
 
-Practical design patterns, protocols, and architectures for real-world AI agents.
+> Practical design patterns for distributed multi-agent systems -- from a single LangGraph pipeline to enterprise-grade, cloud-deployed agent architectures.
 
-A progressive, hands-on learning repository that takes you from a single LangGraph agent to a fully distributed, authenticated, cloud-deployed multi-agent system.
+## The Journey
 
-## Tech Stack
+You are building a **Crypto Intelligence Platform**. It starts as a simple research pipeline -- three agents collaborating inside one process to analyze crypto projects. Then, pattern by pattern, the system evolves:
 
-- **Python 3.14+** with **uv** for package and Python version management
-- **LangGraph** for agent orchestration
-- **FastAPI** for agent HTTP endpoints
-- **Docker Compose** for local multi-container environments
-- **LangSmith** for tracing and observability
-- **Auth0** for OIDC-based agent authentication (Lesson 4+)
-- **Azure Container Apps** for cloud deployment (Lesson 6+)
-- **A2A / MCP** protocols for agent communication
+Tools get standardized through **MCP**, so Claude Code can use the same data sources as your agents. Memory becomes persistent, so yesterday's research isn't lost. Then a second team appears -- **Technical Analysis** -- running in its own container, speaking **A2A protocol**. A third team, **Trading Signals**, needs data from both and can't afford to wait, so communication goes async with **SSE streaming**. The Technical Analysis team moves to an external partner, and suddenly you need **Auth0 JWT tokens** on every call. New agents appear and need to be discovered dynamically. Finally, the whole system deploys to **Azure**.
 
-## Curriculum
+Each step solves a real architectural problem. No artificial exercises -- the domain demands the pattern.
 
-### Phase 1: Learning Agent Patterns (8 Lessons)
+## Design Patterns
 
-| # | Lesson | Key Concepts |
-|---|--------|-------------|
-| 1 | [Multi-Agent Single System](examples/01-multi-agent-single-system/) | LangGraph StateGraph, orchestrator pattern, LangSmith tracing |
-| 2 | [Memory and External Services](examples/02-memory-and-external-services/) | MCP protocol, Supabase, persistent state, tool abstraction |
-| 3 | [Distributed Agents Communication](examples/03-distributed-agents-communication/) | Separate containers, A2A protocol, Agent Cards |
-| 4 | [Cross-Network Authentication](examples/04-cross-network-authentication/) | Auth0 OIDC, M2M tokens, JWT validation |
-| 5 | [Agent Discovery](examples/05-agent-discovery/) | Registry patterns, Agent Cards, enterprise governance |
-| 6 | [Azure Deployment](examples/06-azure-deployment/) | Bicep IaC, Container Apps, CI/CD pipeline |
-| 7 | [UI and Observability](examples/07-ui-and-observability/) | Chat UI, LangSmith dashboard, OpenTelemetry |
-| 8 | [Full Stack Integration](examples/08-full-stack-integration/) | All patterns combined, production reference architecture |
+| # | Pattern | What It Solves | Key Concepts |
+|---|---------|---------------|--------------|
+| 01 | [Orchestrator Pipeline](examples/01-orchestrator-pipeline/) | Decomposing tasks across specialized agents | LangGraph StateGraph, orchestrator pattern, tool use, LangSmith tracing |
+| 02 | [MCP Tool Integration](examples/02-mcp-tool-integration/) | Standardized tool access for agents and AI clients | MCP servers, MCP clients, tool abstraction, Claude Code integration |
+| 03 | [Persistent Memory](examples/03-persistent-memory/) | Remembering across conversations | LangGraph checkpointer, PostgreSQL, thread management |
+| 04 | [Memory Lifecycle](examples/04-memory-lifecycle/) | Managing growing knowledge bases | Memory refiner, fact TTL, hierarchical memory |
+| 05 | [Distributed Agents (A2A)](examples/05-distributed-a2a/) | Cross-team agent communication | A2A protocol, Agent Cards, JSON-RPC, task lifecycle |
+| 06 | [Async Communication](examples/06-async-streaming/) | Non-blocking multi-team coordination | Async A2A, SSE streaming, parallel requests |
+| 07 | [Cross-Network Auth](examples/07-cross-network-auth/) | Securing agents across trust boundaries | Auth0 OIDC, M2M tokens, JWT validation, zero-trust |
+| 08 | [Discovery & Observability](examples/08-discovery-observability/) | Finding agents and monitoring the system | Agent registry, distributed tracing, OpenTelemetry |
+| 09 | [Cloud Deployment](examples/09-cloud-deployment/) | Production infrastructure | Azure Container Apps, Bicep IaC, CI/CD, Managed Identity |
 
-### Phase 2: Conversational Tutoring System (Planned)
+### Three Teams, One Platform
 
-Applies Phase 1 patterns to a real-world distributed system with cross-team agent collaboration. See [docs/phase2/README.md](docs/phase2/README.md).
+```
+  Team 1: Intelligence          Team 2: Technical Analysis     Team 3: Trading Signals
+  (Patterns 01-04)              (Pattern 05+)                  (Pattern 06+)
+
+  Research Planner              Price Collector                 Signal Synthesizer
+  News Scanner                  Indicator Calculator            Risk Assessor
+  Project Profiler              Level Analyst                   Trade Advisor
+  Community Analyst             Technical Reporter
+  Intelligence Compiler
+```
+
+Team 1 researches fundamentals (news, team, roadmap, community). Team 2 crunches numbers (price, indicators, support/resistance). Team 3 combines both into actionable trading signals. Each team deploys independently, communicates via A2A protocol, and authenticates across trust boundaries.
 
 ## Quick Start
 
 ```bash
-# Install uv (if not already installed)
-# https://docs.astral.sh/uv/getting-started/installation/
-
 # Clone and setup
 git clone https://github.com/ksopyla/agent-patterns-lab.git
 cd agent-patterns-lab
@@ -49,26 +51,37 @@ cp .env.example .env
 # Install all dependencies
 make setup
 
-# Run an example (e.g., lesson 1)
-make example EX=01-multi-agent-single-system
+# Run Pattern 01
+make example EX=01-orchestrator-pipeline
+
+# Test it
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Research the Arbitrum crypto project"}'
 ```
 
 ## Project Structure
 
 ```
 agent-patterns-lab/
-├── examples/           # One folder per lesson, each self-contained
-├── libs/common/        # Shared utilities (LLM config, tracing, logging)
-├── docs/               # Curriculum, lessons, changelog
-├── infra/              # Docker base images, Azure Bicep, Vercel config
-├── ui/                 # Chat UI (Lesson 7+)
-├── .github/            # CI/CD workflows, PR templates
-└── .cursor/            # Cursor rules and skills for AI-assisted development
+├── examples/                # One folder per pattern, each self-contained
+│   ├── 01-orchestrator-pipeline/
+│   ├── 02-mcp-tool-integration/
+│   └── ...
+├── libs/common/             # Shared utilities (LLM config, tracing, MCP, A2A, auth)
+├── docs/                    # Curriculum, changelog
+├── infra/                   # Docker base images, Azure Bicep
+├── .github/                 # CI/CD workflows, PR templates
+└── .cursor/                 # Cursor rules and skills for AI-assisted development
 ```
+
+Each pattern folder is self-contained with its own `README.md`, `pyproject.toml`, `docker-compose.yml`, `src/`, and `tests/`.
 
 ## Verbose / Debug Mode
 
 Every example supports `VERBOSE=true` (set in `.env`) which logs:
+
 - Agent reasoning steps with timestamps
 - Tool call inputs/outputs
 - Inter-agent message payloads
@@ -76,36 +89,32 @@ Every example supports `VERBOSE=true` (set in `.env`) which logs:
 
 ## Testing
 
-Run the full suite (unit + API + e2e across all examples) with:
-
 ```bash
+# Full suite (unit + API + e2e across all patterns)
 python scripts/testing/run_test_suite.py
-```
 
-Faster local run without coverage:
-
-```bash
+# Without coverage
 python scripts/testing/run_test_suite.py --no-coverage
-```
 
-Install local git hooks (enforces tests before each commit):
-
-```bash
+# Install git hooks
 uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg
 ```
 
-Test structure for each example:
+## Tech Stack
 
-```text
-examples/NN-name/tests/
-├── unit/
-├── api/
-└── e2e/
-```
+- **Python 3.14+** / **uv** -- package and Python version management
+- **LangGraph** -- agent orchestration with typed state graphs
+- **FastAPI** -- agent HTTP/protocol endpoints
+- **Docker Compose** -- local multi-container environments
+- **LangSmith** -- tracing and observability
+- **MCP** -- standardized tool access (Pattern 02+)
+- **A2A** -- agent-to-agent communication protocol (Pattern 05+)
+- **Auth0** -- OIDC-based agent authentication (Pattern 07+)
+- **Azure Container Apps** -- cloud deployment (Pattern 09)
 
 ## Blog
 
-Detailed write-ups for each lesson at [ai.ksopyla.com](https://ai.ksopyla.com).
+Detailed write-ups for each pattern at [ai.ksopyla.com](https://ai.ksopyla.com).
 
 ## License
 
