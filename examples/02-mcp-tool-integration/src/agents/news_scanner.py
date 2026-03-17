@@ -31,7 +31,7 @@ async def news_scanner_node(state: AgentState) -> dict[str, str]:
     user_input = state["input"]
     verbose_log("NewsScanner", f"Searching for: {user_input[:80]}")
 
-    search = DuckDuckGoSearchResults(num_results=8, output_format="list")
+    search = DuckDuckGoSearchResults(max_results=8, output_format="list")  # type: ignore[call-arg]
     raw_results = await search.ainvoke(f"{user_input} crypto project latest news 2026")
     verbose_log("NewsScanner", f"Got {len(raw_results) if isinstance(raw_results, list) else '?'} search results")
 

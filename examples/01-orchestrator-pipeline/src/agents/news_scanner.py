@@ -30,7 +30,7 @@ async def news_scanner_node(state: AgentState) -> dict[str, str]:
     verbose_log("NewsScanner", f"Searching for: {user_input[:80]}")
 
     search = DuckDuckGoSearchResults(
-        num_results=8,
+        max_results=8,  # type: ignore[call-arg]
         output_format="list",
     )
     raw_results = await search.ainvoke(f"{user_input} crypto project news 2026")
