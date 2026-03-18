@@ -13,6 +13,7 @@ dependencies = [
     "langsmith>=0.3",
     "mcp>=1.0",
     "duckduckgo-search>=8.0",
+    "ddgs>=7.0",
     "fastapi>=0.115",
     "uvicorn>=0.34",
     "pydantic>=2.0",

@@ -4,29 +4,19 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-ARG PACKAGE_NAME
-ARG EXAMPLE_PYPROJECT
-
 COPY pyproject.toml uv.lock ./
 COPY libs/ libs/
-COPY ${EXAMPLE_PYPROJECT} ${EXAMPLE_PYPROJECT}
+COPY examples/02-mcp-tool-integration/pyproject.toml examples/02-mcp-tool-integration/pyproject.toml
 
-RUN test -n "$PACKAGE_NAME"
-RUN test -n "$EXAMPLE_PYPROJECT"
-RUN uv sync --frozen --package "$PACKAGE_NAME" --no-dev
-
-# ---
+RUN uv sync --frozen --package "example-02-mcp-tool-integration" --no-dev
 
 FROM python:3.14-slim AS runtime
 
 WORKDIR /app
 
-ARG EXAMPLE_SRC
-ARG APP_DIR=/app/src
-
 COPY --from=builder /app/.venv /app/.venv
 COPY libs/common/src/agent_common/ /app/agent_common/
-COPY ${EXAMPLE_SRC} ${APP_DIR}/
+COPY examples/02-mcp-tool-integration/src/ /app/src/
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"

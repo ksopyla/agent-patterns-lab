@@ -28,15 +28,21 @@ async def research_planner_node(state: AgentState) -> dict[str, str]:
     user_input = state["input"]
     verbose_log("ResearchPlanner", f"Planning research for: {user_input[:100]}")
 
-    llm = get_chat_model()
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=user_input),
-        ]
-    )
+    try:
+        llm = get_chat_model()
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=user_input),
+            ]
+        )
+        plan = str(response.content)
+    except Exception as exc:
+        verbose_log("ResearchPlanner", f"LLM call failed: {exc}")
+        plan = (
+            f"[Plan generation failed: {type(exc).__name__}] "
+            f"Fallback: research all available information about {user_input}."
+        )
 
-    plan = str(response.content)
     verbose_log("ResearchPlanner", f"Plan created ({len(plan)} chars)")
-
     return {"plan": plan}

@@ -151,21 +151,28 @@ A simple HTTP endpoint invokes the graph and returns the structured report.
 ```bash
 # From the repository root
 cp .env.example .env
-# Fill in AZURE_OPENAI_* or ANTHROPIC_API_KEY + LANGSMITH_API_KEY
+# Fill in AZURE_OPENAI_* or ANTHROPIC_* + LANGSMITH_API_KEY as needed
 
-# Run with Docker
-docker compose -f examples/01-orchestrator-pipeline/docker-compose.yml up --build
+# Run from inside the example folder
+cd examples/01-orchestrator-pipeline
+docker compose up --build
 
-# Or with make
-make example EX=01-orchestrator-pipeline
-
-# Test the health endpoint
+# Verify the API is healthy
 curl http://localhost:8000/health
 
-# Run the intelligence pipeline
+# Submit a research request
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
   -d '{"input": "Research the Arbitrum crypto project"}'
+```
+
+### Optional repo-root shortcut
+
+```bash
+# Run the same example without changing directories
+make example EX=01-orchestrator-pipeline
+
+# You can also send requests from `endpoints.http`
 ```
 
 ## Exercises

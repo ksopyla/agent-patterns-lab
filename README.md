@@ -180,11 +180,9 @@ cd agent-patterns-lab
 cp .env.example .env
 # Fill in your API keys (Azure OpenAI or Anthropic, LangSmith)
 
-# Install dependencies
-make setup
-
-# Run Pattern 01
-make example EX=01-orchestrator-pipeline
+# Run Pattern 01 from inside the example folder
+cd examples/01-orchestrator-pipeline
+docker compose up --build
 
 # Verify it's running
 curl http://localhost:8000/health
@@ -201,6 +199,21 @@ curl -X POST http://localhost:8000/run \
 - **Docker** and **Docker Compose**
 - **API keys**: Azure OpenAI or Anthropic (for LLM), LangSmith (for tracing)
 
+### Optional Repo-Root Shortcuts
+
+If you prefer running examples from the repository root:
+
+```bash
+# Install local dependencies for development
+make setup
+
+# Docker shortcut for an example
+make example EX=01-orchestrator-pipeline
+```
+
+Examples are designed to be run from inside their own folders, but they currently
+share the repository root `.env` file and the workspace `libs/common` package.
+
 ## Project Structure
 
 ```
@@ -209,7 +222,9 @@ agent-patterns-lab/
 │   ├── 01-orchestrator-pipeline/
 │   │   ├── README.md          # Pattern documentation (theory + walkthrough)
 │   │   ├── pyproject.toml
+│   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
+│   │   ├── endpoints.http     # Ready-to-run REST requests
 │   │   ├── src/
 │   │   └── tests/
 │   │       ├── unit/

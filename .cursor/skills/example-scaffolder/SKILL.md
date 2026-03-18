@@ -1,9 +1,10 @@
 ---
 name: example-scaffolder
 description: >-
-  Generates boilerplate for new example folders with consistent structure.
-  Use when creating a new example, starting a new lesson, or scaffolding
-  a new agent service within an example.
+  Generates the folder structure, Docker files, compose files, and README
+  scaffolding for new examples. Use when creating a new `examples/NN-name/`
+  folder, starting a new pattern, or adding a new runnable service inside an
+  example.
 ---
 
 # Example Scaffolder
@@ -12,26 +13,37 @@ description: >-
 
 Trigger this skill when:
 - Creating a new `examples/NN-name/` folder
-- Starting work on a new lesson
-- Adding a new agent service to an existing example
+- Starting work on a new pattern
+- Adding a new runnable service to an existing example
+
+This skill focuses on:
+- example folder structure
+- `Dockerfile` and `docker-compose.yml`
+- `README.md` run instructions
+- HTTP verification helpers such as `endpoints.http`
+
+For LangChain/LangGraph application code, agent wiring, and test templates, use
+the companion skill at [`../langgraph-example-implementation/SKILL.md`](../langgraph-example-implementation/SKILL.md).
 
 ## Folder Structure
 
-Every example must have this structure:
+Every example should start with this structure:
 
-```
+```text
 examples/NN-name/
+├── Dockerfile
 ├── pyproject.toml
 ├── README.md
 ├── docker-compose.yml
+├── endpoints.http
 ├── src/
 │   ├── __init__.py
-│   ├── agents/
-│   │   ├── __init__.py
-│   │   └── [agent_name].py
-│   ├── app.py              # FastAPI application
-│   └── config.py           # Settings and env var loading
+│   ├── app.py
+│   └── agents/
+│       ├── __init__.py
+│       └── [agent_name].py
 └── tests/
+    ├── conftest.py
     ├── unit/
     │   └── test_*.py
     ├── api/
@@ -40,16 +52,23 @@ examples/NN-name/
         └── test_*.py
 ```
 
-## pyproject.toml Template
+Notes:
+- Examples should be runnable from inside their own folder with `docker compose up --build`.
+- Examples may still depend on the repo-root `.env`, workspace `uv.lock`, and `libs/common`.
+- Do not create an example-local `config.py` for shared LLM settings. Use `agent_common.config`.
+
+## `pyproject.toml` Template
 
 ```toml
 [project]
 name = "example-NN-name"
 version = "0.1.0"
-description = "Lesson N: [Title]"
-requires-python = ">=3.12"
+description = "Pattern NN: [Title]"
+requires-python = ">=3.14"
 dependencies = [
     "langgraph>=0.4",
+    "langchain-core>=0.3",
+    "langchain-community>=0.3",
     "langchain-openai>=0.3",
     "langchain-anthropic>=0.3",
     "langsmith>=0.3",
@@ -64,104 +83,180 @@ dependencies = [
 agent-common = { workspace = true }
 ```
 
-Add additional dependencies as needed per lesson (e.g., `supabase` for Lesson 2, `python-jose` for Lesson 4).
+Add extra dependencies only when the example truly needs them, for example:
+- `ddgs` if using `DuckDuckGoSearchResults`
+- `langchain-mcp-adapters` and `mcp` for MCP examples
+- `python-jose` for auth examples
+- database drivers for persistence examples
 
-## docker-compose.yml Template
+## `Dockerfile` Template
+
+Each example should have its own small, explicit `Dockerfile`. Avoid hidden
+folder-name inference in Docker build args.
+
+```dockerfile
+FROM python:3.14-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+COPY libs/ libs/
+COPY examples/NN-name/pyproject.toml examples/NN-name/pyproject.toml
+
+RUN uv sync --frozen --package "example-NN-name" --no-dev
+
+FROM python:3.14-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/.venv /app/.venv
+COPY libs/common/src/agent_common/ /app/agent_common/
+COPY examples/NN-name/src/ /app/src/
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Rules:
+- Keep the package name explicit in the Dockerfile.
+- Keep the copied example path explicit in the Dockerfile.
+- Default the command to `uvicorn src.app:app ...` unless the example is not HTTP-based.
+- For extra services in the same example, prefer compose `command:` overrides over extra Dockerfiles unless runtime contents differ.
+
+## `docker-compose.yml` Template
 
 ```yaml
 services:
   agent:
     build:
       context: ../..
-      dockerfile: infra/docker/base/Dockerfile.agent
-      args:
-        EXAMPLE_DIR: examples/NN-name
+      dockerfile: examples/NN-name/Dockerfile
     ports:
       - "8000:8000"
     env_file:
       - ../../.env
     environment:
       - VERBOSE=${VERBOSE:-true}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 ```
 
-Add additional services as needed (Supabase for Lesson 2, multiple agent containers for Lesson 3+).
+Rules:
+- The primary UX must be `cd examples/NN-name && docker compose up --build`.
+- Keep `context: ../..` so examples can reuse the workspace lockfile and shared library.
+- Make any root `.env` dependency explicit in the README.
+- Add extra services only when the pattern truly needs them.
 
-## Agent Module Template
+## `endpoints.http` Template
 
-```python
-from typing import TypedDict
-from langgraph.graph import StateGraph, END
-from agent_common.tracing import setup_tracing, verbose_log
-from agent_common.llm import get_chat_model
+```http
+### Health
+GET http://localhost:8000/health
 
+### Run pipeline
+POST http://localhost:8000/run
+Content-Type: application/json
 
-class AgentState(TypedDict):
-    messages: list
-    # Add task-specific state fields
-
-
-async def agent_node(state: AgentState) -> dict:
-    llm = get_chat_model()
-    verbose_log("AgentName", f"Processing {len(state['messages'])} messages")
-    # Agent logic here
-    return {"messages": state["messages"]}
-
-
-def build_graph() -> StateGraph:
-    graph = StateGraph(AgentState)
-    graph.add_node("agent", agent_node)
-    graph.set_entry_point("agent")
-    graph.add_edge("agent", END)
-    return graph.compile()
+{
+    "input": "Research the Arbitrum crypto project"
+}
 ```
 
-## FastAPI App Template
+## `README.md` Template
 
-```python
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from pydantic import BaseModel
-from agent_common.tracing import setup_tracing
+Use this outline in every new example README:
 
+````markdown
+# Pattern NN: [Title]
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    setup_tracing()
-    yield
+> One-sentence summary of the pattern.
 
+## What You'll Learn
 
-app = FastAPI(title="Lesson N: [Title]", lifespan=lifespan)
+- Key concept 1
+- Key concept 2
 
+## The Problem
 
-class RunRequest(BaseModel):
-    input: str
+Explain what the previous pattern could not do and why this pattern exists.
 
+## Architecture
 
-class RunResponse(BaseModel):
-    output: str
-    trace_id: str | None = None
+Include a Mermaid diagram when the architecture is not obvious.
 
+## Running the Example
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+```bash
+# From the repository root
+cp .env.example .env
+# Fill in the required API keys
 
+# Run from inside the example folder
+cd examples/NN-name
+docker compose up --build
 
-@app.post("/run", response_model=RunResponse)
-async def run(request: RunRequest):
-    from .agents import build_graph
-    graph = build_graph()
-    result = await graph.ainvoke({"messages": [request.input]})
-    return RunResponse(output=str(result))
+# Verify it's healthy
+curl http://localhost:8000/health
 ```
+
+### Optional repo-root shortcut
+
+```bash
+make example EX=NN-name
+```
+
+## Verification
+
+Show one concrete API request and expected response shape.
+
+Mention `endpoints.http` if the example includes one.
+
+## Exercises
+
+1. Extension idea one
+2. Extension idea two
+
+## Trade-offs
+
+| Advantage | Limitation |
+|-----------|-----------|
+| ... | ... |
+````
+
+README rules:
+- The primary run path should always be the example-folder flow.
+- Root-level shortcuts should be clearly marked as optional.
+- If the example depends on the repo-root `.env`, say so directly.
+- Keep the README self-sufficient: a developer should not need to inspect `infra/`.
+
+## Scaffolding Workflow
+
+1. Create the example folder structure and `pyproject.toml`.
+2. Add an example-local `Dockerfile`.
+3. Add an example-local `docker-compose.yml`.
+4. Add `endpoints.http` for quick verification.
+5. Draft the example README with example-folder-first run instructions.
+6. Then switch to the LangGraph code skill for `src/` and `tests/`.
 
 ## Checklist
 
 After scaffolding, verify:
-- [ ] `pyproject.toml` lists `agent-common` as workspace dependency
-- [ ] `docker-compose.yml` passes `.env` file and `VERBOSE` var
-- [ ] `src/app.py` has `/health` endpoint
-- [ ] `src/app.py` calls `setup_tracing()` in lifespan
-- [ ] Agent nodes use `verbose_log()` for debug output
+- [ ] The example has its own `Dockerfile`
+- [ ] `docker-compose.yml` works from inside the example folder
+- [ ] The compose file points at `examples/NN-name/Dockerfile`
+- [ ] The Dockerfile uses explicit package and source paths
+- [ ] `README.md` documents the example-folder run flow first
+- [ ] `README.md` explains the repo-root `.env` dependency if present
+- [ ] `endpoints.http` exists for HTTP examples
+- [ ] `pyproject.toml` lists `agent-common` as a workspace dependency
 - [ ] `tests/unit`, `tests/api`, and `tests/e2e` all exist
-- [ ] `README.md` follows the documentation-writer template

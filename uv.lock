@@ -393,6 +393,20 @@ wheels = [
 ]
 
 [[package]]
+name = "ddgs"
+version = "9.11.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "lxml" },
+    { name = "primp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d7/3c/0ea1d5685bb0cd3607556d76da30e64c158e5d86bb16a3555f232fe0a33f/ddgs-9.11.4.tar.gz", hash = "sha256:445e22d3ffa16f893bfb0a717593bb0f34d1ceb1df68b6ff4ec27b1a3cdf6941", size = 34798, upload-time = "2026-03-14T18:15:18.086Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/46/f9412fafdebd4eaba366b5336ee4987995ccc3db1bc450e865a34db5fb63/ddgs-9.11.4-py3-none-any.whl", hash = "sha256:62d4d05b25db5d225a727c0a2771ef40258c1d894582c73dad24c88bf90f918b", size = 43681, upload-time = "2026-03-14T18:15:17.063Z" },
+]
+
+[[package]]
 name = "detect-secrets"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -452,6 +466,7 @@ version = "0.1.0"
 source = { virtual = "examples/01-orchestrator-pipeline" }
 dependencies = [
     { name = "agent-common" },
+    { name = "ddgs" },
     { name = "duckduckgo-search" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -468,6 +483,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "agent-common", editable = "libs/common" },
+    { name = "ddgs", specifier = ">=7.0" },
     { name = "duckduckgo-search", specifier = ">=8.0" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
@@ -487,6 +503,7 @@ version = "0.1.0"
 source = { virtual = "examples/02-mcp-tool-integration" }
 dependencies = [
     { name = "agent-common" },
+    { name = "ddgs" },
     { name = "duckduckgo-search" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -505,6 +522,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "agent-common", editable = "libs/common" },
+    { name = "ddgs", specifier = ">=7.0" },
     { name = "duckduckgo-search", specifier = ">=8.0" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },

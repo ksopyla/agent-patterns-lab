@@ -29,17 +29,22 @@ async def intelligence_compiler_node(state: AgentState) -> dict[str, str]:
     news = state.get("news", "")
     verbose_log("IntelligenceCompiler", "Compiling intelligence report")
 
-    llm = get_chat_model()
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(
-                content=(f"Crypto project: {state['input']}\n\nResearch plan:\n{plan}\n\nAnalyzed findings:\n{news}")
-            ),
-        ]
-    )
+    try:
+        llm = get_chat_model()
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(
+                    content=(
+                        f"Crypto project: {state['input']}\n\nResearch plan:\n{plan}\n\nAnalyzed findings:\n{news}"
+                    )
+                ),
+            ]
+        )
+        report = str(response.content)
+    except Exception as exc:
+        verbose_log("IntelligenceCompiler", f"LLM call failed: {exc}")
+        report = f"[Report generation failed: {type(exc).__name__}]\n\nRaw plan:\n{plan}\n\nRaw findings:\n{news}"
 
-    report = str(response.content)
     verbose_log("IntelligenceCompiler", f"Report generated ({len(report)} chars)")
-
     return {"report": report}

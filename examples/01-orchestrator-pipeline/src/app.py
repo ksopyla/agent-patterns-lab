@@ -7,14 +7,16 @@ from contextlib import asynccontextmanager
 
 from agent_common.tracing import setup_tracing, verbose_log
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from src.agents.graph import build_graph
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     setup_tracing()
+    fastapi_app.state.graph = build_graph()
     verbose_log("System", "FastAPI application started")
     yield
     verbose_log("System", "FastAPI application shutting down")
@@ -29,7 +31,7 @@ app = FastAPI(
 
 
 class RunRequest(BaseModel):
-    input: str
+    input: str = Field(min_length=3, max_length=500, description="Crypto project query to research")
 
 
 class RunResponse(BaseModel):
@@ -44,11 +46,17 @@ async def health() -> dict[str, str]:
 
 
 @app.post("/run", response_model=RunResponse)
-async def run(request: RunRequest) -> RunResponse:
+async def run(request: RunRequest) -> RunResponse | JSONResponse:
     verbose_log("System", f"Received request: {request.input[:100]}")
 
-    graph = build_graph()
-    result = await graph.ainvoke({"input": request.input})
+    try:
+        result = await app.state.graph.ainvoke({"input": request.input})
+    except Exception as exc:
+        verbose_log("System", f"Pipeline failed: {exc}")
+        return JSONResponse(
+            status_code=502,
+            content={"error": "pipeline_failed", "detail": str(exc)},
+        )
 
     verbose_log("System", "Pipeline complete, returning response")
 

@@ -54,18 +54,40 @@ Coverage intent:
    - Endpoint schema/flow changed -> update `tests/api/`
    - Graph wiring/agent sequence changed -> update `tests/e2e/`
 3. **Run complete suite**
-   - `python scripts/testing/run_test_suite.py`
+   - `uv run python scripts/testing/run_test_suite.py`
 4. **Fix failures and re-run**
    - Repeat until green.
+5. **Run full CI checks locally**
+   - After all tests pass, run the same checks that CI enforces.
+     Most mypy and lint errors surface here, not during pytest.
+   - `uv run ruff check .`
+   - `uv run ruff format --check .`
+   - `uv run python scripts/linting/run_mypy.py`
+   - Fix every error before proceeding -- CI will reject the same issues.
+6. **Agent Review -- inspect tests for common issues**
+   - Re-read the new/changed test files and look for:
+     - Missing or incorrect type annotations (mypy will flag these)
+     - Imports of modules that don't exist or have moved
+     - Mock objects with misconfigured `.ainvoke` (see Safety Rules)
+     - Assertions that compare wrong types (e.g. `str` vs `dict`)
+     - Leftover `# type: ignore` comments that hide real errors
+     - Tests that accidentally depend on execution order or shared state
+   - Fix every issue found, then re-run steps 3-5 until clean.
 
 ## Commands
 
 - Full test suite with coverage:
-  - `python scripts/testing/run_test_suite.py`
+  - `uv run python scripts/testing/run_test_suite.py`
 - Faster local run without coverage:
-  - `python scripts/testing/run_test_suite.py --no-coverage`
+  - `uv run python scripts/testing/run_test_suite.py --no-coverage`
 - Direct pytest fallback:
   - `uv run pytest`
+- Lint:
+  - `uv run ruff check .`
+- Format check:
+  - `uv run ruff format --check .`
+- Type check (per-directory, avoids duplicate module errors):
+  - `uv run python scripts/linting/run_mypy.py`
 
 ## CI and Commit Gate
 
@@ -73,7 +95,8 @@ Coverage intent:
   - hook id: `run-full-test-suite`
 - Remote gate is enforced via `.github/workflows/ci.yml`:
   - runs on push to `main` and pull requests targeting `main`
-  - executes unit + api + e2e tests with coverage
+  - CI runs **all** of: ruff check, ruff format, mypy, pytest with coverage
+  - **Every command in CI must pass locally before pushing.**
 
 ## Quality Checklist
 
@@ -82,4 +105,8 @@ Before marking testing work complete:
 - [ ] No test performs real LLM API calls (use mocks/stubs)
 - [ ] API tests validate both success and failure paths
 - [ ] E2E tests verify orchestration order and state handoff
-- [ ] `python scripts/testing/run_test_suite.py` passes locally
+- [ ] `uv run python scripts/testing/run_test_suite.py` passes locally
+- [ ] `uv run ruff check .` reports no errors
+- [ ] `uv run ruff format --check .` reports no reformatting needed
+- [ ] `uv run python scripts/linting/run_mypy.py` passes with zero errors
+- [ ] Agent Review step completed -- no type issues, mock misconfigurations, or stale imports remain

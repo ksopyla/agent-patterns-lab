@@ -20,6 +20,17 @@ class _FakeGraph:
         return self.result
 
 
+class _ExplodingGraph:
+    async def ainvoke(self, payload: dict[str, str]) -> dict[str, Any]:
+        raise RuntimeError("LLM provider unreachable")
+
+
+def _make_client(monkeypatch: pytest.MonkeyPatch, graph: object) -> TestClient:
+    """Create a TestClient with a pre-injected graph on app.state."""
+    monkeypatch.setattr(app_module, "build_graph", lambda: graph)
+    return TestClient(app_module.app)
+
+
 def test_health_endpoint_returns_ok() -> None:
     with TestClient(app_module.app) as client:
         response = client.get("/health")
@@ -36,9 +47,8 @@ def test_run_endpoint_executes_graph(monkeypatch: pytest.MonkeyPatch) -> None:
             "news": "Partnership announced.",
         }
     )
-    monkeypatch.setattr(app_module, "build_graph", lambda: fake_graph)
 
-    with TestClient(app_module.app) as client:
+    with _make_client(monkeypatch, fake_graph) as client:
         response = client.post("/run", json={"input": "Research Arbitrum"})
 
     assert response.status_code == 200
@@ -49,8 +59,39 @@ def test_run_endpoint_executes_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     assert fake_graph.received_input == {"input": "Research Arbitrum"}
 
 
-def test_run_endpoint_validates_request() -> None:
+def test_run_endpoint_validates_missing_input() -> None:
     with TestClient(app_module.app) as client:
         response = client.post("/run", json={})
 
     assert response.status_code == 422
+
+
+def test_run_endpoint_rejects_empty_input() -> None:
+    with TestClient(app_module.app) as client:
+        response = client.post("/run", json={"input": ""})
+
+    assert response.status_code == 422
+
+
+def test_run_endpoint_rejects_too_short_input() -> None:
+    with TestClient(app_module.app) as client:
+        response = client.post("/run", json={"input": "ab"})
+
+    assert response.status_code == 422
+
+
+def test_run_endpoint_rejects_too_long_input() -> None:
+    with TestClient(app_module.app) as client:
+        response = client.post("/run", json={"input": "x" * 501})
+
+    assert response.status_code == 422
+
+
+def test_run_endpoint_returns_502_on_pipeline_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    with _make_client(monkeypatch, _ExplodingGraph()) as client:
+        response = client.post("/run", json={"input": "Research Arbitrum"})
+
+    assert response.status_code == 502
+    data = response.json()
+    assert data["error"] == "pipeline_failed"
+    assert "LLM provider unreachable" in data["detail"]

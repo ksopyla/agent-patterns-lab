@@ -11,10 +11,20 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
-mcp = FastMCP("crypto-data")
+mcp = FastMCP(
+    "crypto-data",
+    host="0.0.0.0",
+    port=8000,
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["127.0.0.1:*", "localhost:*", "crypto-data-mcp:*"],
+    ),
+)
+app = mcp.sse_app()
 
 
 async def _coingecko_get(path: str, params: dict[str, str] | None = None) -> Any:
