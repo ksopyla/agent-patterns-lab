@@ -9,6 +9,12 @@ description: >-
 
 # Agent Patterns Advisor
 
+When designin or reviewing agent system act according to the following guidelines:
+- focus on production exmaples and best practices, 
+- we are focusing more on good architecture desing then agent internal implementation details, agents inside should be as simple as possible and focused on one thing, 
+- 
+
+
 ## Architecture Pattern Selection
 
 When the user describes a multi-agent problem, recommend the right pattern:
@@ -61,3 +67,8 @@ For lessons 3+ (multi-container), also check:
 - **Timeouts**: Are HTTP calls to other agents configured with timeouts?
 - **Circuit breaker**: Should repeated failures stop calling a downstream agent?
 - **Message ordering**: Does the system depend on message order? If so, how is it guaranteed?
+
+## resources
+
+* [Agent 2 Agent Protocol](https://a2a-protocol.org/latest/)
+* [Lang graph application structure](https://docs.langchain.com/oss/python/langgraph/application-structure)

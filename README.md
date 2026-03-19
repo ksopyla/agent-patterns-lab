@@ -27,14 +27,14 @@ This project closes that gap with **9 design patterns**, each solving a named ar
 
 ## The Approach
 
-Not tutorials. **Design patterns** -- in the tradition of Gang of Four, Cloud Design Patterns, and Microservices Patterns. Each pattern:
+This is a set of exmaples you can call it **Design Patterns** presenting practical design and implementation  for multi-agent systems. Each pattern:
 
 - Solves a **real architectural problem** that the previous pattern cannot handle
 - Has clear **"when to use / when to avoid"** criteria
 - Shows **trade-offs**, not just happy paths
 - Builds on the previous pattern -- you experience the limitation before learning the solution
 
-The progression itself tells a story. In Pattern 01 you build a familiar `POST /run` REST endpoint. By Pattern 05 that same FastAPI server hosts A2A JSON-RPC protocol endpoints. By Pattern 09 agents discover each other dynamically, authenticate via JWT, and deploy as independent cloud services. HTTP is still the transport -- but what travels over it has fundamentally changed.
+The progression itself tells a story. In Pattern 01 you build a familiar `POST /run` REST endpoint. By Pattern 05 that same FastAPI server hosts [A2A](https://a2a-protocol.org/latest/) JSON-RPC protocol endpoints. By Pattern 09 agents discover each other dynamically, authenticate via JWT, and deploy as independent cloud services. HTTP is still the transport -- but what travels over it has fundamentally changed.
 
 > **This is the Software 2.0 → 3.0 transition, demonstrated through code.**
 
