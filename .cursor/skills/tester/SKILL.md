@@ -1,29 +1,47 @@
 ---
 name: tester
 description: >-
-  Builds and maintains a complete test strategy for examples: unit, API, and
-  end-to-end tests. Use when adding features, refactoring agents, creating new
-  examples, reviewing test coverage, or preparing changes for commit/PR.
+  Owns test strategy, test implementation, and verification for `examples/`
+  and `libs/`. Use whenever code changes affect behavior, graph wiring, APIs,
+  persistence, or regressions; update `unit`, `api`, and `e2e` tests and run
+  the repository test, lint, and type-check workflow before finishing.
 ---
 
 # Tester
 
-## When to Use
+## Responsibility
+
+This skill owns test planning, test authoring, test maintenance, and verification.
+
+Use it to:
+- decide which test layers must change
+- implement or update `unit`, `api`, and `e2e` tests
+- run the required test, lint, and type-check commands
+- investigate regressions and confidence gaps
+
+Do not use it to:
+- choose architecture or protocol boundaries; use [`../agent-patterns-advisor/SKILL.md`](../agent-patterns-advisor/SKILL.md)
+- implement most production code under `examples/*/src`; use [`../langgraph-example-implementation/SKILL.md`](../langgraph-example-implementation/SKILL.md)
+- scaffold example directories or Docker/README files; use [`../example-scaffolder/SKILL.md`](../example-scaffolder/SKILL.md)
+
+## Trigger Conditions
 
 Trigger this skill when:
-- Adding or changing code in `examples/*/src/` or `libs/*/src/`
-- Creating a new example folder
-- Improving confidence before commit or pull request
-- Investigating regressions in pipeline flow or API behavior
+- adding or changing code in `examples/*/src/` or `libs/*/src/`
+- creating a new example folder or a new public API surface
+- improving confidence before commit or pull request
+- investigating regressions in graph flow, API behavior, or persistence
+- reviewing whether coverage still matches the changed behavior
 
-## Rules
-- use pytest for testing
-- follow the langgraph test strategy https://docs.langchain.com/oss/python/langgraph/test
+## Non-Negotiable Rules
+
+- Use pytest for testing.
+- Follow the LangGraph testing strategy: https://docs.langchain.com/oss/python/langgraph/test
 - For LangGraph agents, build the graph definition separately and create a fresh
   compiled graph inside each test with a new in-memory checkpointer.
 - Use a stable `thread_id` in graph tests whenever persistence, resume behavior,
   interrupts, or `update_state()` are involved.
-- while writing tests focus on one example at a time and do not change other examples tests or code
+- Focus on one example at a time and do not change unrelated examples or tests.
 - Do not rely on live LLM providers in tests.
 - Prefer deterministic tests with mocks/stubs.
 - Keep API and e2e tests in CI-safe form (no external services required unless explicitly marked and isolated).
@@ -131,15 +149,15 @@ Apply those patterns to the repository test layers:
 - `tests/e2e/`: compiled graph execution, persistence, interrupts, and state
   handoff across multiple nodes
 
-## Default Workflow
+## Testing Workflow
 
-1. **Discover impacted examples**
+1. **Discover impacted scope**
    - Check changed files under `examples/` and `libs/`.
-2. **Update tests by scope**
+2. **Update tests by layer**
    - Behavior logic changed -> update `tests/unit/`
    - Endpoint schema/flow changed -> update `tests/api/`
    - Graph wiring/agent sequence changed -> update `tests/e2e/`
-3. **Run complete suite**
+3. **Run the repository test suite**
    - `uv run python scripts/testing/run_test_suite.py`
 4. **Fix failures and re-run**
    - Repeat until green.
@@ -150,11 +168,11 @@ Apply those patterns to the repository test layers:
    - `uv run ruff format --check .`
    - `uv run python scripts/linting/run_mypy.py`
    - Fix every error before proceeding -- CI will reject the same issues.
-6. **Agent Review -- inspect tests for common issues**
+6. **Review the changed tests**
    - Re-read the new/changed test files and look for:
      - Missing or incorrect type annotations (mypy will flag these)
      - Imports of modules that don't exist or have moved
-     - Mock objects with misconfigured `.ainvoke` (see Safety Rules)
+     - Mock objects with misconfigured `.ainvoke` (see Non-Negotiable Rules)
      - Assertions that compare wrong types (e.g. `str` vs `dict`)
      - Leftover `# type: ignore` comments that hide real errors
      - Tests that accidentally depend on execution order or shared state
@@ -187,4 +205,4 @@ Before marking testing work complete:
 - [ ] `uv run ruff check .` reports no errors
 - [ ] `uv run ruff format --check .` reports no reformatting needed
 - [ ] `uv run python scripts/linting/run_mypy.py` passes with zero errors
-- [ ] Agent Review step completed -- no type issues, mock misconfigurations, or stale imports remain
+- [ ] Review the changed tests step completed -- no type issues, mock misconfigurations, or stale imports remain
