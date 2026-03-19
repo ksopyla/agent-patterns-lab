@@ -19,6 +19,11 @@ Trigger this skill when:
 ## Rules
 - use pytest for testing
 - follow the langgraph test strategy https://docs.langchain.com/oss/python/langgraph/test
+- For LangGraph agents, build the graph definition separately and create a fresh
+  compiled graph inside each test with a new in-memory checkpointer.
+- Use a stable `thread_id` in graph tests whenever persistence, resume behavior,
+  interrupts, or `update_state()` are involved.
+- while writing tests focus on one example at a time and do not change other examples tests or code
 - Do not rely on live LLM providers in tests.
 - Prefer deterministic tests with mocks/stubs.
 - Keep API and e2e tests in CI-safe form (no external services required unless explicitly marked and isolated).
@@ -46,6 +51,85 @@ Coverage intent:
 - **unit**: isolate pure logic and individual agent nodes with mocks/stubs
 - **api**: validate FastAPI endpoints (`/health`, request validation, response model)
 - **e2e**: validate graph orchestration and cross-node state flow
+
+## LangGraph Agent Test Strategy
+
+When testing LangGraph-based agents, prefer these patterns from the official
+LangGraph testing guide:
+
+- Create the graph in a helper such as `create_graph()` and compile it inside
+  each test with a fresh `MemorySaver()` checkpointer. Do not share a compiled
+  graph across tests because stateful checkpoints can leak between test cases.
+- Test the full graph with `invoke()` or `ainvoke()` using explicit initial
+  state and `config={"configurable": {"thread_id": "test-id"}}`.
+- Test individual nodes directly through `compiled_graph.nodes["node_name"]`
+  when you want focused unit coverage for one agent step. This bypasses
+  checkpointer behavior, which is useful for isolated node assertions.
+- Test middle sections of a graph with partial execution instead of forcing
+  every test through the full workflow:
+  - seed prior state with `compiled_graph.update_state(...)`
+  - set `as_node="previous_node"` so execution resumes at the next node
+  - call `invoke(None, ..., interrupt_after="target_node")` to stop at the end
+    of the section under test
+- If a subsection of the workflow has a clear boundary, consider extracting it
+  as a subgraph so it can be tested directly.
+- Prefer asserting on state updates, routing decisions, and tool-call inputs or
+  outputs, not on verbose model phrasing.
+
+Reference patterns:
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+
+def test_graph_execution() -> None:
+    graph = create_graph()
+    compiled_graph = graph.compile(checkpointer=MemorySaver())
+
+    result = compiled_graph.invoke(
+        {"messages": [], "query": "btc"},
+        config={"configurable": {"thread_id": "test-thread"}},
+    )
+
+    assert result["report"]
+```
+
+```python
+def test_single_node() -> None:
+    graph = create_graph()
+    compiled_graph = graph.compile(checkpointer=MemorySaver())
+
+    result = compiled_graph.nodes["research_planner"].invoke(
+        {"messages": [], "query": "btc"}
+    )
+
+    assert result["plan"]
+```
+
+```python
+def test_partial_execution() -> None:
+    graph = create_graph()
+    compiled_graph = graph.compile(checkpointer=MemorySaver())
+
+    compiled_graph.update_state(
+        config={"configurable": {"thread_id": "test-thread"}},
+        values={"messages": [], "query": "btc", "plan": ["news"]},
+        as_node="research_planner",
+    )
+
+    result = compiled_graph.invoke(
+        None,
+        config={"configurable": {"thread_id": "test-thread"}},
+        interrupt_after="news_scanner",
+    )
+
+    assert result["news_findings"]
+```
+
+Apply those patterns to the repository test layers:
+- `tests/unit/`: node-level tests and routing logic
+- `tests/api/`: endpoint-to-graph integration with mocked dependencies
+- `tests/e2e/`: compiled graph execution, persistence, interrupts, and state
+  handoff across multiple nodes
 
 ## Default Workflow
 
@@ -91,14 +175,6 @@ Coverage intent:
 - Type check (per-directory, avoids duplicate module errors):
   - `uv run python scripts/linting/run_mypy.py`
 
-## CI and Commit Gate
-
-- Local commit gate is enforced via `.pre-commit-config.yaml`:
-  - hook id: `run-full-test-suite`
-- Remote gate is enforced via `.github/workflows/ci.yml`:
-  - runs on push to `main` and pull requests targeting `main`
-  - CI runs **all** of: ruff check, ruff format, mypy, pytest with coverage
-  - **Every command in CI must pass locally before pushing.**
 
 ## Quality Checklist
 
