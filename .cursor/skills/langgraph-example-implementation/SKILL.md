@@ -43,6 +43,8 @@ Do not use it to:
 - Use typed state via `TypedDict` or Pydantic models
 - Keep public request and response schemas explicit
 - Use `verbose_log()` in meaningful places
+- Keep one shared `LANGSMITH_PROJECT` across the repo and differentiate examples with run tags and metadata, not extra per-example env vars
+- For public graph entrypoints, pass a `build_langsmith_run_config(...)` result into `invoke()` or `ainvoke()`
 - Use FastAPI `lifespan` instead of startup/shutdown decorators
 - Expose `/health` returning `{"status": "ok"}`
 - Keep modules focused and easy to test in isolation
@@ -174,7 +176,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from agent_common.tracing import setup_tracing, verbose_log
+from agent_common.tracing import build_langsmith_run_config, setup_tracing, verbose_log
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -201,6 +203,14 @@ class RunResponse(BaseModel):
     report: str
 
 
+def _run_config() -> dict[str, object]:
+    return build_langsmith_run_config(
+        example_name="NN-name",
+        pattern_slug="pattern-slug",
+        run_name="pattern-nn-run",
+    )
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -209,13 +219,18 @@ async def health() -> dict[str, str]:
 @app.post("/run", response_model=RunResponse)
 async def run(request: RunRequest) -> RunResponse:
     verbose_log("System", f"Received request: {request.input[:100]}")
-    result = await app.state.graph.ainvoke({"input": request.input})
+    result = await app.state.graph.ainvoke(
+        {"input": request.input},
+        config=_run_config(),
+    )
     return RunResponse(report=result.get("report", ""))
 ```
 
 Guidance:
 - Build the graph once in `lifespan` unless the example is explicitly about dynamic graph construction
 - Keep request/response schemas explicit
+- Keep LangSmith project selection simple: reuse the repo-wide `LANGSMITH_PROJECT` and rely on tags plus metadata for per-example filtering
+- Include stable tags such as `example:...`, `pattern:...`, `env:...`, `runtime:...`, and `provider:...`
 - Add structured error handling when the pattern needs resilience or external dependencies
 - Keep endpoint handlers thin; they should validate, call the graph or service layer, and map output
 

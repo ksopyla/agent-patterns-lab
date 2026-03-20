@@ -1,51 +1,134 @@
 # Pattern 01: Orchestrator Pipeline
 
-> Decompose a complex research task across multiple specialized agents using LangGraph StateGraph.
+> Build a three-agent crypto research pipeline that turns one `POST /run` request into a plan, web research, and a structured report.
 
-## What You'll Learn
+`Pattern 01 of 9`. This is the starting point for Team 1 (Intelligence): one FastAPI app, one LangGraph pipeline, one Docker service. It is intentionally simple, easy to run, and designed to make the next limitation obvious before [Pattern 02](../02-mcp-tool-integration/README.md) introduces MCP.
 
-- How to build a multi-agent system using LangGraph's StateGraph
-- The orchestrator pattern: one graph coordinates multiple specialized agents
-- How to integrate external tools (web search) into agent nodes
-- How to use LangSmith tracing to observe every agent decision
-- How to containerize and run agents with Docker Compose
+Useful context:
+- [Curriculum](../../docs/curriculum.md)
+- [Vision & Roadmap](../../docs/vision.md)
+- [Next pattern: MCP Tool Integration](../02-mcp-tool-integration/README.md)
+
+## Quick Start
+
+You can run this example locally in a few minutes.
+
+```bash
+# From the repository root
+cp .env.example .env
+
+# Choose one LLM provider:
+# - Azure OpenAI: fill AZURE_OPENAI_* (default)
+# - Anthropic: fill ANTHROPIC_API_KEY and set LLM_PROVIDER=anthropic
+#
+# Optional but recommended once configured:
+# - LANGSMITH_API_KEY for hosted LangSmith traces
+# - Keep LANGSMITH_PROJECT=agent-patterns-lab and use per-example tags/metadata
+
+cd examples/01-orchestrator-pipeline
+docker compose up --build
+
+# Verify the API
+curl http://localhost:8000/health
+
+# Run the pipeline
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Research the Arbitrum crypto project"}'
+```
+
+The primary UX is running from inside the example folder. A repo-root shortcut also exists:
+
+```bash
+make example EX=01-orchestrator-pipeline
+```
+
+If you prefer an HTTP client, use [`endpoints.http`](endpoints.http).
+
+## What You Get Back
+
+The API returns the final report and the intermediate artifacts that produced it:
+
+```json
+{
+  "report": "## Executive Summary\n...",
+  "plan": "1. Recent news\n2. Team background\n...",
+  "news": "Recent findings synthesized from web search results..."
+}
+```
+
+That response shape is deliberate. It makes the pipeline easier to debug and easier to learn from than a single opaque output blob.
+
+## At a Glance
+
+| Item | Details |
+|------|---------|
+| Pattern role | First runnable pattern in the series |
+| Team | Team 1: Intelligence |
+| Agents | Research Planner, News Scanner, Intelligence Compiler |
+| Runtime | FastAPI + LangGraph in one container |
+| Tooling | DuckDuckGo web search inside the News Scanner |
+| Endpoints | `GET /health`, `POST /run` |
+| Input validation | `input` must be 3-500 characters |
+| Success signal | `/run` returns `report`, `plan`, and `news` |
+| Observability | `VERBOSE=true` logs to stderr; hosted LangSmith tracing is enabled when `LANGSMITH_API_KEY` is set and runs are tagged with example, environment, runtime, and provider metadata |
 
 ## The Problem
 
-You need to build a crypto project intelligence system. A single monolithic LLM prompt tries to plan, research, and write all at once -- the planning is shallow, the research unfocused, and the report inconsistent.
+A single monolithic LLM prompt tries to plan, research, and write all at once. The result is usually shallow planning, unfocused research, and inconsistent output.
 
-**The solution**: Split responsibility across three focused agents that collaborate within a single LangGraph StateGraph:
+This pattern fixes that by splitting the job across three specialized agents:
 
-1. **Research Planner** -- analyzes the request and creates a structured research plan
-2. **News Scanner** -- searches the web for relevant information using DuckDuckGo
-3. **Intelligence Compiler** -- synthesizes findings into a structured intelligence report
+| Agent | Role | Tool |
+|-------|------|------|
+| Research Planner | Turns the request into a focused research plan | None |
+| News Scanner | Searches the web and summarizes relevant findings | DuckDuckGo |
+| Intelligence Compiler | Converts the plan and findings into a structured report | None |
+
+The point is not "more agents = better." The point is that each step gets a clearer responsibility, a shorter prompt, and observable handoffs.
 
 ## Architecture
 
 ```mermaid
 graph TD
-    User["User Request\n(POST /run)"] --> FastAPI
-    FastAPI --> StateGraph
-    subgraph StateGraph ["LangGraph StateGraph"]
-        Planner["Research Planner\n(creates research plan)"]
-        Scanner["News Scanner\n(DuckDuckGo + analysis)"]
-        Compiler["Intelligence Compiler\n(structured report)"]
-        Planner --> Scanner
-        Scanner --> Compiler
+    user["User request\n(POST /run)"] --> fastapi["FastAPI app"]
+    fastapi --> stateGraph["LangGraph StateGraph"]
+    subgraph pipeline [Three-agent pipeline]
+        planner["Research Planner"]
+        scanner["News Scanner\nDuckDuckGo + analysis"]
+        compiler["Intelligence Compiler"]
+        planner --> scanner
+        scanner --> compiler
     end
-    Compiler --> Response["Intelligence Report\n(JSON)"]
-    StateGraph -.->|traces| LangSmith
+    stateGraph --> pipeline
+    compiler --> response["JSON response\nreport + plan + news"]
+    stateGraph -.->|"optional traces"| langsmith["LangSmith"]
 ```
+
+## When to Use / When Not to Use
+
+**Use this pattern when:**
+- You want the simplest real multi-agent architecture that still shows clear orchestration boundaries.
+- You need one service with a few specialized steps and shared typed state.
+- You want a strong teaching or debugging story before adding more infrastructure.
+
+**Avoid this pattern when:**
+- Tools need to be shared across multiple agents, services, or AI clients. That is the motivation for [Pattern 02](../02-mcp-tool-integration/README.md).
+- You need persistence across requests. This pattern starts fresh every time.
+- You need independent deployment, scaling, or trust boundaries between agent groups.
 
 ## Key Concepts
 
-### LangGraph StateGraph
+- **StateGraph**: a typed state object flows through explicit graph nodes and edges.
+- **Focused agents**: each node does one job well instead of carrying one giant all-in-one prompt.
+- **Observable execution**: verbose logs and optional LangSmith traces make every handoff visible.
+- **Graceful degradation**: node-level failures fall back to partial outputs instead of crashing immediately.
 
-LangGraph models agent workflows as directed graphs:
+## Implementation Walkthrough
 
-- **Nodes** are async functions that process and update shared state
-- **Edges** define the flow between nodes (sequential, conditional, or parallel)
-- **State** is a typed dictionary that flows through the graph
+### Step 1: Define the shared state
+
+The state is the contract between agents. Every node reads what it needs and writes one focused output.
 
 ```python
 class AgentState(TypedDict, total=False):
@@ -55,78 +138,33 @@ class AgentState(TypedDict, total=False):
     report: str
 ```
 
-### Why Multiple Agents Instead of One?
+### Step 2: Build focused async nodes
 
-| Aspect | Single Agent | Multi-Agent (This Pattern) |
-|--------|-------------|---------------------------|
-| Prompt complexity | Long, tries everything | Short, focused per role |
-| Output quality | Inconsistent | Each step validates the previous |
-| Debugging | Opaque "black box" | See each agent's reasoning in LangSmith |
-| Extensibility | Hard to modify | Add/remove agents without breaking others |
-| Cost | One expensive call | Multiple cheaper, focused calls |
+Every agent follows the same shape: read state, do one job, return a partial update.
 
-### LangSmith Integration
-
-LangSmith captures the full execution trace -- which agent ran, inputs/outputs, timing, and token usage. Every trace gets a unique ID for dashboard lookup.
-
-### Verbose Mode
-
-When `VERBOSE=true`, every agent logs to stderr with timestamps:
-
-```
-[14:32:01.234] [ResearchPlanner] Planning research for: Research Arbitrum
-[14:32:03.891] [ResearchPlanner] Plan created (245 chars)
-[14:32:03.892] [NewsScanner] Searching for: Research Arbitrum
-[14:32:06.445] [NewsScanner] Got 8 search results
-[14:32:08.901] [NewsScanner] Analysis complete (523 chars)
-[14:32:08.902] [IntelligenceCompiler] Compiling intelligence report
-[14:32:11.678] [IntelligenceCompiler] Report generated (847 chars)
-```
-
-## Implementation
-
-### Step 1: Define the State
-
-The state is the data contract between all agents. Each agent reads what it needs and writes its output.
-
-```python
-class AgentState(TypedDict, total=False):
-    input: Required[str]   # Crypto project query
-    plan: str              # Research Planner's output
-    news: str              # News Scanner's analyzed findings
-    report: str            # Intelligence Compiler's final report
-```
-
-### Step 2: Build Agent Nodes
-
-Each agent is an async function that takes state, does work, and returns updates.
-
-```python
-async def research_planner_node(state: AgentState) -> dict[str, str]:
-    llm = get_chat_model()
-    response = await llm.ainvoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=state["input"]),
-    ])
-    return {"plan": str(response.content)}
-```
-
-The News Scanner adds a tool call -- DuckDuckGo web search:
+The News Scanner is the most interesting node because it combines tool use with an LLM pass and degrades gracefully if search or model calls fail:
 
 ```python
 async def news_scanner_node(state: AgentState) -> dict[str, str]:
-    search = DuckDuckGoSearchResults(max_results=8, output_format="list")
-    raw_results = await search.ainvoke(f"{state['input']} crypto project news 2026")
+    try:
+        search = DuckDuckGoSearchResults(max_results=8, output_format="list")
+        current_year = datetime.now(UTC).year
+        raw_results = await search.ainvoke(
+            f"{state['input']} crypto project news {current_year}"
+        )
+    except Exception as exc:
+        raw_results = f"[Search unavailable: {type(exc).__name__}]"
 
     llm = get_chat_model()
-    response = await llm.ainvoke([
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=f"Query: {state['input']}\nPlan: {state['plan']}\nResults: {raw_results}"),
-    ])
+    response = await llm.ainvoke([...])
     return {"news": str(response.content)}
 ```
 
-### Step 3: Wire the Graph
+That design keeps the pipeline educational and resilient: a weak dependency produces degraded output, not an unreadable black box failure.
+
+### Step 3: Wire the graph explicitly
+
+Pattern 01 is a straight-line orchestrator pipeline:
 
 ```python
 graph = StateGraph(AgentState)
@@ -139,58 +177,111 @@ graph.add_edge("research_planner", "news_scanner")
 graph.add_edge("news_scanner", "intelligence_compiler")
 graph.add_edge("intelligence_compiler", END)
 
-app = graph.compile()
+compiled_graph = graph.compile()
 ```
 
-### Step 4: Expose via FastAPI
+### Step 4: Expose the graph via FastAPI
 
-A simple HTTP endpoint invokes the graph and returns the structured report.
+The FastAPI app builds the graph at startup, keeps it on `app.state`, and invokes it from `POST /run`.
 
-## Running the Example
+```python
+@asynccontextmanager
+async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
+    setup_tracing()
+    fastapi_app.state.graph = build_graph()
+    yield
+
+@app.post("/run", response_model=RunResponse)
+async def run(request: RunRequest) -> RunResponse | JSONResponse:
+    result = await app.state.graph.ainvoke({"input": request.input})
+    return RunResponse(
+        report=result.get("report", ""),
+        plan=result.get("plan", ""),
+        news=result.get("news", ""),
+    )
+```
+
+Two API details are worth noticing:
+- `input` is validated by Pydantic and must be between 3 and 500 characters.
+- If graph execution raises an exception, the endpoint returns `502` with `{"error": "pipeline_failed", "detail": "..."}`.
+
+## What You Should See
+
+With `VERBOSE=true`, container logs show each handoff clearly:
+
+```text
+[14:32:01.234] [ResearchPlanner] Planning research for: Research Arbitrum
+[14:32:03.891] [ResearchPlanner] Plan created (245 chars)
+[14:32:03.892] [NewsScanner] Searching for: Research Arbitrum
+[14:32:06.445] [NewsScanner] Got 8 search results
+[14:32:08.901] [NewsScanner] Analysis complete (523 chars)
+[14:32:08.902] [IntelligenceCompiler] Compiling intelligence report
+[14:32:11.678] [IntelligenceCompiler] Report generated (847 chars)
+```
+
+If `LANGSMITH_API_KEY` is set, startup also enables hosted LangSmith tracing under the shared `agent-patterns-lab` project. Public runs add per-example tags and metadata automatically so one project can still be filtered by example, environment, runtime, and provider. If tracing is requested but no key is set, the app logs a clear warning, disables tracing, and keeps running.
+
+## Verification
+
+Use these checks to confirm the example behaves the way the code and tests expect:
+
+```bash
+# Healthy service
+curl http://localhost:8000/health
+
+# Valid request
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Research the Solana crypto project"}'
+
+# Validation failure (too short)
+curl -X POST http://localhost:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"input": "ab"}'
+```
+
+Expected behavior:
+- `GET /health` returns `{"status": "ok"}`
+- Valid `POST /run` returns `report`, `plan`, and `news`
+- Invalid input returns `422`
+- Unhandled graph failure returns `502`
+
+## Local Development
+
+Docker is the fastest way to try this example. If you want to work on the code
+locally, `uv` is the workspace tool for syncing dependencies, running tests, and
+checking types.
 
 ```bash
 # From the repository root
-cp .env.example .env
-# Fill in AZURE_OPENAI_* or ANTHROPIC_* + LANGSMITH_API_KEY as needed
+uv sync --all-packages
 
-# Run from inside the example folder
-cd examples/01-orchestrator-pipeline
-docker compose up --build
+# Run the repository test suite
+uv run python scripts/testing/run_test_suite.py
 
-# Verify the API is healthy
-curl http://localhost:8000/health
-
-# Submit a research request
-curl -X POST http://localhost:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Research the Arbitrum crypto project"}'
+# Run the repository type-check wrapper
+uv run python scripts/linting/run_mypy.py
 ```
 
-### Optional repo-root shortcut
-
-```bash
-# Run the same example without changing directories
-make example EX=01-orchestrator-pipeline
-
-# You can also send requests from `endpoints.http`
-```
+Use this path when you want to iterate on the codebase itself rather than just
+run the example container.
 
 ## Exercises
 
-1. **Add a fourth agent**: Add a "Fact Checker" agent between the News Scanner and Intelligence Compiler that validates claims found in the research.
-2. **Conditional routing**: Modify the graph so that if the Research Planner determines the request is about a well-known project (BTC, ETH), it uses a shorter plan.
-3. **Parallel research**: Split the News Scanner into two parallel nodes -- one for news and one for project/team info -- using LangGraph's fan-out pattern.
+1. Add a fourth agent between the News Scanner and Intelligence Compiler to fact-check claims before report generation.
+2. Introduce conditional routing so well-known projects take a shorter research path.
+3. Split research into two parallel branches and compare the trade-off against this simple sequential flow.
 
 ## Trade-offs
 
 | Advantage | Limitation |
 |-----------|-----------|
-| Clear separation of concerns | Sequential execution adds latency |
-| Easy to debug with LangSmith traces | All agents share a single process |
-| Each agent's prompt is short and focused | No persistence -- every request starts fresh |
-| Tool use is straightforward | Tools are hardcoded, not standardized |
+| Very easy to understand and run | Sequential execution adds latency |
+| Clear boundaries between responsibilities | All agents live in one process |
+| Great observability for learning and debugging | Every request starts from scratch |
+| Tool use is easy to add inside a node | Tools are hardcoded, not standardized |
 
-**Next pattern** (Pattern 02) addresses the last two limitations by adding MCP for standardized tool access and introducing additional agents.
+This last limitation is the reason [Pattern 02](../02-mcp-tool-integration/README.md) exists. Once tools need to be reused by multiple agents or external AI clients, direct Python tool calls stop scaling.
 
 ## Further Reading
 

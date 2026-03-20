@@ -19,11 +19,15 @@ Trigger this skill when:
 This skill focuses on:
 - example folder structure
 - `Dockerfile` and `docker-compose.yml`
-- `README.md` run instructions
+- lightweight `README.md` scaffolding
 - HTTP verification helpers such as `endpoints.http`
 
 For LangChain/LangGraph application code, agent wiring, and test templates, use
 the companion skill at [`../langgraph-example-implementation/SKILL.md`](../langgraph-example-implementation/SKILL.md).
+
+For final README structure, narrative, GitHub-first ordering, and code-to-doc
+fidelity, hand off to [`../example-readme-writer/SKILL.md`](../example-readme-writer/SKILL.md)
+after the example behavior is implemented.
 
 ## Folder Structure
 
@@ -56,6 +60,8 @@ Notes:
 - Examples should be runnable from inside their own folder with `docker compose up --build`.
 - Examples may still depend on the repo-root `.env`, workspace `uv.lock`, and `libs/common`.
 - Do not create an example-local `config.py` for shared LLM settings. Use `agent_common.config`.
+- Reuse the repo-root `LANGSMITH_PROJECT` value. Do not add per-example LangSmith project env vars just to separate traces.
+- In `tests/conftest.py`, disable LangSmith tracing by default so local or CI test runs never depend on host-level tracing credentials.
 
 ## `pyproject.toml` Template
 
@@ -155,6 +161,7 @@ Rules:
 - The primary UX must be `cd examples/NN-name && docker compose up --build`.
 - Keep `context: ../..` so examples can reuse the workspace lockfile and shared library.
 - Make any root `.env` dependency explicit in the README.
+- Prefer a single shared hosted LangSmith project such as `agent-patterns-lab`; separate examples later with tags and metadata, not extra env vars.
 - Add extra services only when the pattern truly needs them.
 
 ## `endpoints.http` Template
@@ -174,38 +181,33 @@ Content-Type: application/json
 
 ## `README.md` Template
 
-Use this outline in every new example README:
+This skill should create a lightweight README shell, not a fully polished final
+pattern README. The goal is to make the example runnable immediately and leave
+the finished narrative to `example-readme-writer` once the code and tests exist.
+
+Use this scaffold:
 
 ````markdown
 # Pattern NN: [Title]
 
-> One-sentence summary of the pattern.
+> One-sentence value proposition.
 
-## What You'll Learn
+Short positioning paragraph:
+- where this pattern fits in the series
+- what the example runs
+- what limitation it will eventually highlight
 
-- Key concept 1
-- Key concept 2
-
-## The Problem
-
-Explain what the previous pattern could not do and why this pattern exists.
-
-## Architecture
-
-Include a Mermaid diagram when the architecture is not obvious.
-
-## Running the Example
+## Quick Start
 
 ```bash
-# From the repository root
 cp .env.example .env
-# Fill in the required API keys
+# Fill in the required API keys and settings
+# Optional: configure hosted LangSmith with LANGSMITH_API_KEY
+# Reuse a shared LANGSMITH_PROJECT such as agent-patterns-lab
 
-# Run from inside the example folder
 cd examples/NN-name
 docker compose up --build
 
-# Verify it's healthy
 curl http://localhost:8000/health
 ```
 
@@ -215,29 +217,32 @@ curl http://localhost:8000/health
 make example EX=NN-name
 ```
 
+## What You Get Back
+
+Briefly describe the response shape, artifact, or success signal.
+
 ## Verification
 
-Show one concrete API request and expected response shape.
-
+Show one concrete request and expected response or behavior.
 Mention `endpoints.http` if the example includes one.
 
-## Exercises
+## Architecture
 
-1. Extension idea one
-2. Extension idea two
+Placeholder for a Mermaid diagram or architecture notes.
 
 ## Trade-offs
 
-| Advantage | Limitation |
-|-----------|-----------|
-| ... | ... |
+Placeholder bullets or a small advantage/limitation table.
 ````
 
 README rules:
+- Put the runnable path near the top.
 - The primary run path should always be the example-folder flow.
 - Root-level shortcuts should be clearly marked as optional.
 - If the example depends on the repo-root `.env`, say so directly.
-- Keep the README self-sufficient: a developer should not need to inspect `infra/`.
+- If the example supports LangSmith tracing, prefer one shared project and mention that examples are separated by tags and metadata.
+- Keep the scaffold honest. Do not invent response shapes or behavior that the code does not implement yet.
+- Once the implementation and tests exist, use `example-readme-writer` to finalize the README.
 
 ## Scaffolding Workflow
 
@@ -245,8 +250,9 @@ README rules:
 2. Add an example-local `Dockerfile`.
 3. Add an example-local `docker-compose.yml`.
 4. Add `endpoints.http` for quick verification.
-5. Draft the example README with example-folder-first run instructions.
-6. Then switch to the LangGraph code skill for `src/` and `tests/`.
+5. Draft the example README shell with example-folder-first run instructions.
+6. Switch to the LangGraph code skill for `src/` and `tests/`.
+7. Once the behavior is real, use `example-readme-writer` to finalize the README.
 
 ## Checklist
 
@@ -255,8 +261,11 @@ After scaffolding, verify:
 - [ ] `docker-compose.yml` works from inside the example folder
 - [ ] The compose file points at `examples/NN-name/Dockerfile`
 - [ ] The Dockerfile uses explicit package and source paths
+- [ ] `README.md` is a runnable scaffold, not an invented final doc
 - [ ] `README.md` documents the example-folder run flow first
 - [ ] `README.md` explains the repo-root `.env` dependency if present
+- [ ] The scaffold does not introduce per-example LangSmith project env vars
 - [ ] `endpoints.http` exists for HTTP examples
 - [ ] `pyproject.toml` lists `agent-common` as a workspace dependency
 - [ ] `tests/unit`, `tests/api`, and `tests/e2e` all exist
+- [ ] `example-readme-writer` is used later for final README polish

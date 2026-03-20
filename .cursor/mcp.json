@@ -26,6 +26,16 @@
         "MEMORY_FILE_PATH": ".cursor/memory/memory.json"
       }
     },
+    "langsmith": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-env.mjs",
+        "uv",
+        "tool",
+        "run",
+        "langsmith-mcp-server"
+      ]
+    },
     "supabase": {
       "command": "node",
       "args": [

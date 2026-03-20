@@ -1,17 +1,18 @@
 ---
 name: tester
 description: >-
-  Owns test strategy, test implementation, and verification for `examples/`
-  and `libs/`. Use whenever code changes affect behavior, graph wiring, APIs,
-  persistence, or regressions; update `unit`, `api`, and `e2e` tests and run
-  the repository test, lint, and type-check workflow before finishing.
+  Owns test strategy, test implementation, and automated verification for
+  `examples/` and `libs/`. Use whenever code changes affect behavior, graph
+  wiring, APIs, persistence, or regressions; update `unit`, `api`, and `e2e`
+  tests and run the repository test, lint, and type-check workflow before
+  finishing.
 ---
 
 # Tester
 
 ## Responsibility
 
-This skill owns test planning, test authoring, test maintenance, and verification.
+This skill owns test planning, test authoring, test maintenance, and automated verification.
 
 Use it to:
 - decide which test layers must change
@@ -23,6 +24,7 @@ Do not use it to:
 - choose architecture or protocol boundaries; use [`../agent-patterns-advisor/SKILL.md`](../agent-patterns-advisor/SKILL.md)
 - implement most production code under `examples/*/src`; use [`../langgraph-example-implementation/SKILL.md`](../langgraph-example-implementation/SKILL.md)
 - scaffold example directories or Docker/README files; use [`../example-scaffolder/SKILL.md`](../example-scaffolder/SKILL.md)
+- own live Docker runs, manual smoke tests, container log review, or LangSmith/Auth0 runtime checks; use [`../runtime-verifier/SKILL.md`](../runtime-verifier/SKILL.md)
 
 ## Trigger Conditions
 
@@ -32,6 +34,7 @@ Trigger this skill when:
 - improving confidence before commit or pull request
 - investigating regressions in graph flow, API behavior, or persistence
 - reviewing whether coverage still matches the changed behavior
+- the main question is about test coverage, fixtures, mocks, CI safety, or pytest structure rather than manual runtime validation
 
 ## Non-Negotiable Rules
 
@@ -43,6 +46,7 @@ Trigger this skill when:
   interrupts, or `update_state()` are involved.
 - Focus on one example at a time and do not change unrelated examples or tests.
 - Do not rely on live LLM providers in tests.
+- Disable LangSmith tracing in tests by default so host-level API keys do not leak live ingest into local or CI test runs.
 - Prefer deterministic tests with mocks/stubs.
 - Keep API and e2e tests in CI-safe form (no external services required unless explicitly marked and isolated).
 - When mocking LangChain/MCP tool objects, configure `.ainvoke` explicitly:
@@ -148,6 +152,8 @@ Apply those patterns to the repository test layers:
 - `tests/api/`: endpoint-to-graph integration with mocked dependencies
 - `tests/e2e/`: compiled graph execution, persistence, interrupts, and state
   handoff across multiple nodes
+- In each example `tests/conftest.py`, add an autouse fixture that sets `LANGSMITH_TRACING=false`, `LANGCHAIN_TRACING_V2=false`, clears LangSmith API keys, and clears any cached settings objects.
+- Keep shared observability helper tests narrowly scoped. For example, `libs/common/tests/test_langsmith_config_contract.py` should remain a small contract test for local env handling and shared tagging conventions, not a catch-all tracing or LangSmith integration test file.
 
 ## Testing Workflow
 

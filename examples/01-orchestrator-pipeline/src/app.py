@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import cast
 
-from agent_common.tracing import setup_tracing, verbose_log
+from agent_common.tracing import build_langsmith_run_config, setup_tracing, verbose_log
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from src.agents.graph import build_graph
@@ -40,6 +42,18 @@ class RunResponse(BaseModel):
     news: str
 
 
+def _pipeline_run_config() -> RunnableConfig:
+    """Build trace metadata for the public pipeline invocation."""
+    return cast(
+        RunnableConfig,
+        build_langsmith_run_config(
+            example_name="01-orchestrator-pipeline",
+            pattern_slug="orchestrator-pipeline",
+            run_name="pattern-01-orchestrator-pipeline",
+        ),
+    )
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -50,7 +64,10 @@ async def run(request: RunRequest) -> RunResponse | JSONResponse:
     verbose_log("System", f"Received request: {request.input[:100]}")
 
     try:
-        result = await app.state.graph.ainvoke({"input": request.input})
+        result = await app.state.graph.ainvoke(
+            {"input": request.input},
+            config=_pipeline_run_config(),
+        )
     except Exception as exc:
         verbose_log("System", f"Pipeline failed: {exc}")
         return JSONResponse(
