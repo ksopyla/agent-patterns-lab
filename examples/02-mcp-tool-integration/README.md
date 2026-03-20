@@ -161,19 +161,25 @@ Now Claude Code can call `search_coins`, `get_coin_info`, and `get_coin_price` d
 cp .env.example .env
 # Fill in API keys
 
-# Run with Docker (starts MCP server + agent)
-docker compose -f examples/02-mcp-tool-integration/docker-compose.yml up --build
+# Run from inside the example folder (starts MCP server + agent)
+cd examples/02-mcp-tool-integration
+docker compose up --build
 
-# Or with make
-make example EX=02-mcp-tool-integration
-
-# Test endpoints
+# Verify the API is healthy
 curl http://localhost:8000/health
 
 # Run the full intelligence pipeline
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
   -d '{"input": "Research the Arbitrum crypto project"}'
+```
+
+### Optional repo-root shortcut
+
+```bash
+make example EX=02-mcp-tool-integration
+
+# You can also send requests from `endpoints.http`
 ```
 
 ## Debug Walkthrough

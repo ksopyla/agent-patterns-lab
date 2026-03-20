@@ -16,11 +16,11 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str = ""
     azure_openai_api_key: str = ""
     azure_openai_deployment: str = ""
-    azure_openai_api_version: str = "2025-12-01-preview"
+    azure_openai_api_version: str = "2025-01-01-preview"
 
     # Anthropic
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-4.6-opus"
+    anthropic_model: str = "claude-sonnet-4-6"
 
     # LangSmith
     langsmith_api_key: str = ""

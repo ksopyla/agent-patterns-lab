@@ -6,6 +6,7 @@ Initializes connections to MCP servers at startup and provides tool access to ag
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 from agent_common.tracing import verbose_log
@@ -26,6 +27,32 @@ def _get_mcp_config() -> dict[str, dict[str, Any]]:
     }
 
 
+def normalize_project_query(user_input: str) -> str:
+    """Extract the likely project name from a natural-language research request."""
+    query = user_input.strip()
+    query = re.sub(r"^(research|analyze|profile)\s+(the\s+)?", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"\s+crypto project$", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"\s+project$", "", query, flags=re.IGNORECASE)
+    return query.strip() or user_input.strip()
+
+
+def mcp_result_to_text(result: object) -> str:
+    """Normalize MCP tool results into a plain text payload."""
+    if isinstance(result, str):
+        return result
+
+    if isinstance(result, list):
+        text_parts = [
+            item["text"]
+            for item in result
+            if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str)
+        ]
+        if text_parts:
+            return "\n".join(text_parts)
+
+    return str(result)
+
+
 async def init_mcp() -> None:
     """Connect to all MCP servers and load available tools."""
     global _mcp_client, _mcp_tools  # noqa: PLW0603
@@ -33,8 +60,8 @@ async def init_mcp() -> None:
     verbose_log("MCP", f"Connecting to MCP servers: {list(config.keys())}")
 
     client: MultiServerMCPClient = MultiServerMCPClient(config)  # type: ignore[arg-type]
-    _mcp_client = await client.__aenter__()
-    tools: list[BaseTool] = await _mcp_client.get_tools()  # type: ignore[misc]
+    tools: list[BaseTool] = await client.get_tools()
+    _mcp_client = client
     _mcp_tools = {t.name: t for t in tools}
     verbose_log("MCP", f"Loaded {len(_mcp_tools)} tools: {list(_mcp_tools.keys())}")
 
@@ -43,7 +70,6 @@ async def close_mcp() -> None:
     """Disconnect from all MCP servers."""
     global _mcp_client, _mcp_tools  # noqa: PLW0603
     if _mcp_client:
-        await _mcp_client.__aexit__(None, None, None)  # type: ignore[func-returns-value]
         _mcp_client = None
         _mcp_tools = {}
         verbose_log("MCP", "Disconnected from MCP servers")

@@ -454,7 +454,7 @@ Focus: production readiness -- discovery, observability, and cloud deployment.
 
 ## Deliverables Per Pattern
 
-1. Self-contained working code (`docker compose up --build` to run)
+1. Self-contained working code (`cd examples/NN-name && docker compose up --build` to run)
 2. Comprehensive `README.md` in the pattern folder
 3. Full test suite (`tests/unit/`, `tests/api/`, `tests/e2e/`)
 4. CHANGELOG entry

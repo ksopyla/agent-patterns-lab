@@ -1,0 +1,18 @@
+### Health
+GET http://localhost:8000/health
+
+### Run pipeline - Research a crypto project
+POST http://localhost:8000/run
+Content-Type: application/json
+
+{
+    "input": "Research the Arbitrum crypto project"
+}
+
+### Run pipeline - Another project
+POST http://localhost:8000/run
+Content-Type: application/json
+
+{
+    "input": "Research the Solana crypto project"
+}

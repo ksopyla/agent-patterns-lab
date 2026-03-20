@@ -16,7 +16,8 @@ fmt:
 	uv run ruff format .
 	uv run ruff check --fix .
 
-# Usage: make example EX=01-orchestrator-pipeline
+# Preferred flow: cd examples/01-orchestrator-pipeline && docker compose up --build
+# Shortcut usage: make example EX=01-orchestrator-pipeline
 example:
 	docker compose -f examples/$(EX)/docker-compose.yml up --build
 
