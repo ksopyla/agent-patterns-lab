@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## [2026-03-21] Shared agent Docker build
+
+### Changed
+- Examples 01 and 02 build from `infra/docker/base/Dockerfile.agent` only; per-example `Dockerfiles` removed.
+- Each `docker-compose.yml` passes `PACKAGE_NAME`, `EXAMPLE_PYPROJECT`, and `EXAMPLE_SRC` as build args.
+- Deploy workflow builds with the same Dockerfile and args convention.
+
 ## [2026-03-15] Initial Repository Setup
 
 ### Added

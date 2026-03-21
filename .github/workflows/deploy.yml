@@ -40,7 +40,10 @@ jobs:
         run: |
           IMAGE="${{ secrets.ACR_NAME }}.azurecr.io/agent-patterns-lab/${{ inputs.example }}:${{ github.sha }}"
           docker build \
-            -f examples/${{ inputs.example }}/Dockerfile \
+            -f infra/docker/base/Dockerfile.agent \
+            --build-arg "PACKAGE_NAME=example-${{ inputs.example }}" \
+            --build-arg "EXAMPLE_PYPROJECT=examples/${{ inputs.example }}/pyproject.toml" \
+            --build-arg "EXAMPLE_SRC=examples/${{ inputs.example }}/src/" \
             -t "$IMAGE" .
           docker push "$IMAGE"
 

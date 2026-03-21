@@ -213,6 +213,8 @@ make example EX=01-orchestrator-pipeline
 
 Examples are designed to be run from inside their own folders, but they currently
 share the repository root `.env` file and the workspace `libs/common` package.
+Container images are built from `infra/docker/base/Dockerfile.agent` with
+per-example build arguments set in each `docker-compose.yml`.
 
 ## Project Structure
 
@@ -222,7 +224,6 @@ agent-patterns-lab/
 │   ├── 01-orchestrator-pipeline/
 │   │   ├── README.md          # Pattern documentation (theory + walkthrough)
 │   │   ├── pyproject.toml
-│   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── endpoints.http     # Ready-to-run REST requests
 │   │   ├── src/

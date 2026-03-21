@@ -1,9 +1,25 @@
 ---
 name: runtime-verifier
-description: Verifies running examples and services through Docker, health checks, manual requests, container logs, and MCP-backed observability tools such as LangSmith or Auth0. Use after implementation when you need smoke tests, runtime debugging, manual QA, trace inspection, or external-service verification.
+description: >-
+  Live runtime verification for examples and Docker Compose services: health checks,
+  representative HTTP requests (e.g. POST /run), container logs, LangSmith traces via MCP,
+  smoke tests, manual QA, "verify it works", "is it running", "check the stack",
+  "runtime check", "smoke test", "test in Docker". Use this skill whenever verification
+  involves a running container or real request path—not pytest alone. Complements
+  ../tester/SKILL.md (automated tests). After implementation or when debugging startup.
 ---
 
 # Runtime Verifier
+
+## Agent activation (read this first)
+
+**When this skill applies:** the user asks to verify, smoke-test, run, or confirm that an **example or service works in Docker** (or similar: "working properly", "runtime check", "does it run", "check logs", "see traces").
+
+**Required behavior for the agent:**
+
+1. **Do not treat `pytest` (or unit/API tests alone) as sufficient** for "verify it works" when the user expects a **live** stack—tests are owned by [`../tester/SKILL.md`](../tester/SKILL.md). You may run pytest *in addition* after runtime checks, unless the user explicitly asks for tests only.
+2. Execute **all steps in [Mandatory verification steps](#mandatory-verification-steps)** below unless the user **narrows scope** (e.g. "only health check" or "logs only"). If you skip a mandatory step, **say which step and why** in the report.
+4. End with the **[Reporting Format](#reporting-format)** section, including **what was not checked**.
 
 ## Responsibility
 
@@ -25,11 +41,24 @@ Do not use it to:
 ## When To Use
 
 Trigger this skill when:
-- the user asks to "test it", "verify it", "run it", or "smoke test it"
+- the user asks to "test it", "verify it", "run it", or "smoke test it" **in a Docker / example context**
 - Docker containers, startup logs, or runtime behavior must be checked
 - LangSmith traces, runs, tags, or metadata must be inspected
 - external integrations such as Auth0 need manual verification
 - automated tests pass but you still need runtime confidence
+
+## Mandatory verification steps
+
+Complete these in order for a **full** verification of an example under `examples/`:
+
+1. **Confirm target** — Which folder, which endpoints, what "success" means (see `endpoints.http` and README).
+2. **Pre-flight** — Check for existing containers (`docker ps`) or compose stacks that would conflict; avoid duplicate servers on the same ports.
+3. **Start stack** — From the example folder: `docker compose up --build` (detached `-d` is fine). Wait until the service is **healthy** if a healthcheck exists, or until startup logs show the app listening.
+4. **Exercise HTTP** — `GET` `/health` (or documented health URL). Then at least **one representative request** that hits the main code path (e.g. `POST /run` using a body from `endpoints.http`). Confirm the response shape or status matches expectations.
+5. **Logs** — `docker compose logs` (or `logs <service>`) and scan for errors, trace/auth failures, repeated retries. Note **warnings** that may matter (e.g. deprecation noise).
+6. **LangSmith (if tracing is on)** — After a real request, verify traces (see [LangSmith Checklist](#langsmith-checklist)). Use MCP tools when available.
+7. **Teardown** — `docker compose down` unless the user asked to leave containers running.
+8. **Report** — Use [Reporting Format](#reporting-format).
 
 ## Core Principles
 
@@ -41,10 +70,11 @@ Trigger this skill when:
 
 ## MCP Guidance
 
-- Prefer repo-configured MCP servers when they fit the task:
-  - `langsmith` for runs, traces, prompts, datasets, and projects
-  - `auth0` for Auth0 tenant inspection and auth-related checks
-  - `docker` for container-aware workflows when it is more effective than shell commands
+- Prefer repo-configured MCP servers when they fit the task. **Server names in Cursor are often prefixed** (e.g. `project-0-agent-patterns-lab-langsmith`), not the short key from `.cursor/mcp.json`. **Before calling a tool:** read the tool schema from the project `mcps/<server>/tools/` descriptors (or the system "Available MCP servers" list) and use the **actual server identifier** shown there.
+- Logical roles:
+  - LangSmith-style server: runs, traces, prompts, datasets, projects
+  - Auth0: tenant inspection when present
+  - Docker: container-aware workflows when more effective than shell
 - For committed `.cursor/mcp.json` entries, use wrappers such as `scripts/mcp-env.mjs` so API keys come from `.env` rather than the repository file.
 - If LangSmith uses a regional endpoint, make sure `LANGSMITH_ENDPOINT` is present in `.env` so the MCP server and app use the same region.
 
@@ -58,19 +88,18 @@ Trigger this skill when:
    - Check existing terminals or containers
    - Avoid duplicate dev servers or duplicate Compose stacks
 
-3. Start the service with the normal project workflow.
+3. Start the docker compose stack.
    - Prefer the example-local `docker compose up --build`
    - Wait for a healthy container or successful startup log
 
 4. Exercise the service.
-   - Hit `/health`
-   - Send one or two representative requests
-   - Prefer `endpoints.http` examples or stable payloads from the README
+   - Hit `/health` (or the documented health endpoint)
+   - Send one or two **representative** requests so the main service flow runs (agents collaborate as designed). Use `endpoints.http` or stable payloads from the README. **Check the response body or status.**
 
 5. Inspect runtime evidence.
    - Container logs for warnings, stack traces, retries, auth failures, or tool errors
-   - LangSmith traces for root runs, node ordering, tags, metadata, and child tool calls
-   - External service logs or responses when relevant
+   - LangSmith traces for root runs, node ordering, tags, metadata, and child tool calls (when applicable)
+   - External service logs or responses when relevant: postgres, redis, auth0, etc.
 
 6. Summarize confidence.
    - What was verified
@@ -80,11 +109,12 @@ Trigger this skill when:
 ## LangSmith Checklist
 
 When LangSmith tracing is expected:
+
 - Confirm startup logs show tracing enabled without auth or ingest errors
 - Trigger at least one real request so a trace is created
 - Inspect recent runs and verify:
   - the expected project is used
-  - root and child runs appear
+  - root run exists; expand or fetch child runs when verifying node ordering matters
   - expected tags are present, such as `example:...`, `pattern:...`, `env:...`, `runtime:...`, `provider:...`
   - metadata looks sane for the example and environment
 - If traces are missing, check:
@@ -103,15 +133,17 @@ When LangSmith tracing is expected:
 ## Reporting Format
 
 Use this order:
+
 1. Runtime status
 2. Findings
 3. Verified evidence
 4. Residual risks or gaps
 
 If there are no findings, say:
+
 - no runtime issues found in the checks performed
 
-Then list the exact checks completed.
+Then list the **exact checks completed** (health, which POST/GET, logs reviewed, LangSmith MCP or UI, teardown).
 
 ## Boundaries
 
