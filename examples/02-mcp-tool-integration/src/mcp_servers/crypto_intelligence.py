@@ -1,6 +1,6 @@
 """MCP server exposing CoinGecko crypto data as tools.
 
-Run standalone: python -m src.mcp_servers.crypto_data
+Run standalone: python -m src.mcp_servers.crypto_intelligence
 Connects to the free CoinGecko API (no API key required, rate-limited ~30 req/min).
 """
 
@@ -16,12 +16,12 @@ from mcp.server.transport_security import TransportSecuritySettings
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
 mcp = FastMCP(
-    "crypto-data",
+    "crypto-intelligence",
     host="0.0.0.0",
     port=8000,
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=["127.0.0.1:*", "localhost:*", "crypto-data-mcp:*"],
+        allowed_hosts=["127.0.0.1:*", "localhost:*", "crypto-intelligence-mcp:*"],
     ),
 )
 app = mcp.sse_app()

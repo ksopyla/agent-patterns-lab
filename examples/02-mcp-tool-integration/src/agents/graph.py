@@ -2,8 +2,8 @@
 
 Pipeline: research_planner -> news_scanner -> project_profiler -> community_analyst -> intelligence_compiler
 
-The news_scanner uses DuckDuckGo directly. The project_profiler and community_analyst
-use MCP tools to access CoinGecko data through the crypto-data MCP server.
+The news_scanner uses DuckDuckGo directly (not through MCP).
+The project_profiler and community_analyst use the crypto-intelligence MCP server (SSE transport).
 """
 
 from __future__ import annotations

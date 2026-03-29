@@ -1,6 +1,6 @@
 """Project Profiler agent -- gathers project fundamentals via MCP tools.
 
-This agent uses the crypto-data MCP server to get structured project information
+Uses the crypto-intelligence MCP server to get structured project information
 from CoinGecko, demonstrating MCP-based tool access.
 """
 
@@ -29,41 +29,49 @@ Be factual and quantitative where possible."""
 
 
 async def project_profiler_node(state: AgentState) -> dict[str, str]:
-    """Gather project fundamentals using MCP crypto-data tools."""
+    """Gather project fundamentals using MCP crypto-intelligence tools."""
     user_input = state["input"]
     verbose_log("ProjectProfiler", f"Profiling: {user_input[:80]}")
     search_query = normalize_project_query(user_input)
 
-    search_tool = get_mcp_tool("search_coins")
-    search_results = await search_tool.ainvoke({"query": search_query})
-    search_results_text = mcp_result_to_text(search_results)
-    verbose_log("ProjectProfiler", f"Coin search returned: {search_results_text[:200]}")
+    try:
+        search_tool = get_mcp_tool("search_coins")
+        search_results = await search_tool.ainvoke({"query": search_query})
+        search_results_text = mcp_result_to_text(search_results)
+        verbose_log("ProjectProfiler", f"Coin search returned: {search_results_text[:200]}")
 
-    coins = json.loads(search_results_text) if search_results_text else []
-    coin_id = coins[0]["id"] if coins else search_query.lower().replace(" ", "-")
+        coins = json.loads(search_results_text) if search_results_text else []
+        coin_id = coins[0]["id"] if coins else search_query.lower().replace(" ", "-")
 
-    info_tool = get_mcp_tool("get_coin_info")
-    price_tool = get_mcp_tool("get_coin_price")
+        info_tool = get_mcp_tool("get_coin_info")
+        price_tool = get_mcp_tool("get_coin_price")
 
-    coin_info = mcp_result_to_text(await info_tool.ainvoke({"coin_id": coin_id}))
-    coin_price = mcp_result_to_text(await price_tool.ainvoke({"coin_id": coin_id}))
-    verbose_log("ProjectProfiler", "Got coin info and price data via MCP")
+        coin_info = mcp_result_to_text(await info_tool.ainvoke({"coin_id": coin_id}))
+        coin_price = mcp_result_to_text(await price_tool.ainvoke({"coin_id": coin_id}))
+        verbose_log("ProjectProfiler", "Got coin info and price data via MCP")
+    except Exception as exc:
+        verbose_log("ProjectProfiler", f"MCP tool call failed: {exc}")
+        coin_info = f"[Project data unavailable: {type(exc).__name__}]"
+        coin_price = "[Price data unavailable]"
 
-    llm = get_chat_model()
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(
-                content=(
-                    f"Project query: {user_input}\n\n"
-                    f"CoinGecko project info:\n{coin_info}\n\n"
-                    f"Current price data:\n{coin_price}"
-                )
-            ),
-        ]
-    )
+    try:
+        llm = get_chat_model()
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(
+                    content=(
+                        f"Project query: {user_input}\n\n"
+                        f"CoinGecko project info:\n{coin_info}\n\n"
+                        f"Current price data:\n{coin_price}"
+                    )
+                ),
+            ]
+        )
+        profile = str(response.content)
+    except Exception as exc:
+        verbose_log("ProjectProfiler", f"LLM call failed: {exc}")
+        profile = f"[Profile generation failed: {type(exc).__name__}] Data: {coin_info}"
 
-    profile = str(response.content)
     verbose_log("ProjectProfiler", f"Profile complete ({len(profile)} chars)")
-
     return {"profile": profile}

@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here.
 
+## [2026-03-29] Pattern 02: MCP Tool Integration -- complete
+
+### Summary
+Full Team 1 intelligence pipeline (5 agents) with crypto-intelligence MCP server
+wrapping CoinGecko. Demonstrates MCP from the builder's perspective: standardized
+tool access that any MCP client (agents, Claude Desktop, Cursor) can connect to.
+
+### Added
+- `crypto-intelligence` MCP server (`src/mcp_servers/crypto_intelligence.py`) with 3 CoinGecko tools: `search_coins`, `get_coin_info`, `get_coin_price`
+- Project Profiler agent -- gathers project fundamentals via MCP tools
+- Community Analyst agent -- assesses community/developer health via MCP tools
+- MCP client lifecycle management (`mcp_setup.py`) with `MultiServerMCPClient`
+- Multi-container Docker Compose (agent + crypto-intelligence MCP server)
+- Claude Desktop integration instructions in README
+- Graceful degradation in all agent nodes (MCP failures, search failures, LLM failures produce partial output)
+- Input validation (`3-500 chars`), error handling (502 on pipeline failure), LangSmith run config -- matching Pattern 01 conventions
+- Full test suite: 30 tests (unit for all 5 nodes + MCP server + MCP setup, API for validation/errors/pipeline, e2e for graph execution order)
+
+### Changed
+- Renamed `crypto-data` → `crypto-intelligence` MCP server (better name reflecting purpose)
+- Updated `docs/curriculum.md` with sharper Pattern 02 goal and implementation details
+- Updated `docs/vision.md` Pattern 02 narrative
+- Example README rewritten matching Pattern 01 structure (Quick Start, At a Glance, Architecture, When to Use, Implementation Walkthrough, Verification, Exercises, Trade-offs)
+
+### Architecture Decisions
+- **CoinGecko as MCP server, not raw API**: Wrapping CoinGecko in MCP demonstrates the core lesson -- standardized tool access. Free tier (no API key) keeps onboarding simple.
+- **DuckDuckGo stays as direct tool**: MCP and direct tools coexist pragmatically. Use MCP for shared, reusable domain tools; keep direct calls for single-use commodity tools.
+- **No external MCP consumption in this pattern**: Considered Brave Search MCP (stdio transport) but rejected -- adds Node.js dependency, API key requirement, and complexity without proportional teaching value. External MCP consumption suggested as an exercise instead.
+- **Graph built once in lifespan, not per request**: Matches Pattern 01 convention and avoids unnecessary overhead.
+
+### Dependencies
+- langchain-mcp-adapters >= 0.2 (MCP client for LangGraph agents)
+- mcp >= 1.0 (MCP server SDK with FastMCP)
+
+---
+
 ## [2026-03-29] Pattern 01: Orchestrator Pipeline -- complete
 
 ### Summary

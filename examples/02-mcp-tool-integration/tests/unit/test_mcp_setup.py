@@ -87,3 +87,9 @@ def test_normalize_project_query_strips_prompt_phrasing() -> None:
 def test_mcp_result_to_text_extracts_text_blocks() -> None:
     result = mcp_setup.mcp_result_to_text([{"type": "text", "text": '[{"id": "arbitrum"}]'}])
     assert result == '[{"id": "arbitrum"}]'
+
+
+def test_mcp_config_includes_crypto_intelligence() -> None:
+    config = mcp_setup._get_mcp_config()
+    assert "crypto-intelligence" in config
+    assert config["crypto-intelligence"]["transport"] == "sse"

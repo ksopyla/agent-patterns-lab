@@ -1,6 +1,7 @@
 """MCP client lifecycle management.
 
 Initializes connections to MCP servers at startup and provides tool access to agents.
+The crypto-intelligence MCP server (CoinGecko) uses SSE transport for network access.
 """
 
 from __future__ import annotations
@@ -18,10 +19,10 @@ _mcp_tools: dict[str, BaseTool] = {}
 
 
 def _get_mcp_config() -> dict[str, dict[str, Any]]:
-    crypto_data_url = os.environ.get("CRYPTO_DATA_MCP_URL", "http://localhost:8001/sse")
+    crypto_intelligence_url = os.environ.get("CRYPTO_INTELLIGENCE_MCP_URL", "http://localhost:8001/sse")
     return {
-        "crypto-data": {
-            "url": crypto_data_url,
+        "crypto-intelligence": {
+            "url": crypto_intelligence_url,
             "transport": "sse",
         },
     }

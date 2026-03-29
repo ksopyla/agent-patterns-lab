@@ -57,6 +57,20 @@ async def test_news_scanner_returns_news(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
+async def test_news_scanner_degrades_on_search_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    model = _DummyModel("Unable to find recent news due to search unavailability.")
+    monkeypatch.setattr(news_scanner, "get_chat_model", lambda: model)
+
+    mock_search = AsyncMock()
+    mock_search.ainvoke = AsyncMock(side_effect=RuntimeError("Search API down"))
+    with patch.object(news_scanner, "DuckDuckGoSearchResults", return_value=mock_search):
+        result = await news_scanner.news_scanner_node({"input": "Research Arbitrum", "plan": ""})
+
+    assert "news" in result
+    assert len(model.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_project_profiler_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     model = _DummyModel("Arbitrum is an L2 optimistic rollup. Price: $1.23, Market cap: $4.5B")
     monkeypatch.setattr(project_profiler, "get_chat_model", lambda: model)
@@ -87,6 +101,22 @@ async def test_project_profiler_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
+async def test_project_profiler_degrades_on_mcp_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    model = _DummyModel("Limited profile available due to data source issues.")
+    monkeypatch.setattr(project_profiler, "get_chat_model", lambda: model)
+
+    def _failing_tool(name: str) -> None:
+        raise KeyError(f"MCP tool '{name}' not found")
+
+    monkeypatch.setattr(project_profiler, "get_mcp_tool", _failing_tool)
+
+    result = await project_profiler.project_profiler_node({"input": "Research Arbitrum"})
+
+    assert "profile" in result
+    assert len(model.calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_community_analyst_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     model = _DummyModel("Community Health: Strong. Active GitHub with 500+ contributors.")
     monkeypatch.setattr(community_analyst, "get_chat_model", lambda: model)
@@ -110,6 +140,22 @@ async def test_community_analyst_uses_mcp_tools(monkeypatch: pytest.MonkeyPatch)
     result = await community_analyst.community_analyst_node({"input": "Research Arbitrum"})
 
     assert "Strong" in result["community"]
+
+
+@pytest.mark.asyncio
+async def test_community_analyst_degrades_on_mcp_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    model = _DummyModel("Community analysis unavailable due to data source issues.")
+    monkeypatch.setattr(community_analyst, "get_chat_model", lambda: model)
+
+    def _failing_tool(name: str) -> None:
+        raise KeyError(f"MCP tool '{name}' not found")
+
+    monkeypatch.setattr(community_analyst, "get_mcp_tool", _failing_tool)
+
+    result = await community_analyst.community_analyst_node({"input": "Research Arbitrum"})
+
+    assert "community" in result
+    assert len(model.calls) == 1
 
 
 @pytest.mark.asyncio
