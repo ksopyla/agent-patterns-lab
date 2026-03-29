@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## [2026-03-29] Pattern 01: Orchestrator Pipeline -- complete
+
+### Summary
+Three-agent crypto intelligence pipeline (Research Planner, News Scanner, Intelligence Compiler)
+with LangGraph StateGraph, FastAPI, and Docker Compose. First runnable pattern in the series.
+
+### Highlights
+- Async agent nodes with graceful degradation (search failure and LLM failure produce partial output, not crashes)
+- Full test suite: unit tests for state and all 3 nodes, API tests for all endpoints and validation edges, e2e test for graph execution order
+- LangSmith tracing with per-example tags and metadata for filtering across a shared project
+- Comprehensive README with architecture diagram, implementation walkthrough, exercises, and trade-offs
+- Narrative bridge to Pattern 02 (hardcoded tools don't scale to shared or cross-client use)
+
+### Fixed
+- `.env.example` terminology: "Lesson 4+" updated to "Pattern 07+"
+- Makefile `lint` target: replaced raw `mypy` invocation with `scripts/linting/run_mypy.py` wrapper to avoid duplicate module errors in monorepo
+
+---
+
 ## [2026-03-21] Shared agent Docker build
 
 ### Changed

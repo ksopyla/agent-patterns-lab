@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Project Vision
 
-For the full narrative, story, and architectural philosophy, see `docs/vision.md`.
+For the full narrative, story, and architectural philosophy, see `docs/vision.md` and `docs/curriculum.md`.
 
 **Practical design patterns for distributed multi-agent systems** -- from single-process orchestration to enterprise-grade, cloud-deployed agent architectures.
 

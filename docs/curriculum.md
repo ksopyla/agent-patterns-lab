@@ -95,7 +95,7 @@ Focus: agent internals -- orchestration, tools, memory. All run in a single Dock
 
 **Goal:** Decompose a complex research task across multiple specialized agents within a single LangGraph StateGraph, exposed via FastAPI, with LangSmith tracing and verbose debug output.
 
-**What it solves:** A single monolithic LLM prompt tries to plan, research, and write all at once, producing shallow and inconsistent results. The orchestrator pattern splits responsibility across focused agents that each do one thing well.
+**What it solves:** A single monolithic Agent (one graph with 3 nodes) tries to plan, research, and write all at once, producing shallow results. The orchestrator pattern splits responsibility across focused agents that each do one thing well.
 
 **Team focus:** Team 1 (Intelligence) -- first 3 agents as a minimal viable pipeline.
 

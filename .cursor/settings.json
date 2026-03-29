@@ -11,6 +11,9 @@
     },
     "redis-development": {
       "enabled": true
+    },
+    "huggingface-skills": {
+      "enabled": true
     }
   }
 }
