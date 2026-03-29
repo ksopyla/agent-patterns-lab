@@ -1,6 +1,9 @@
 ---
-description: Git branching strategy, commit message format, and PR workflow
-alwaysApply: true
+name: git-workflow
+description: >-
+  Git branching, conventional commits, and PR workflow. Use when committing
+  code, creating branches, opening pull requests, or any git operation
+  that needs project conventions.
 ---
 
 # Git Workflow
@@ -11,6 +14,7 @@ alwaysApply: true
 - Feature branches off `dev` when needed: `feat/NN-short-name`
 
 ## Commit Messages
+
 Use conventional commits with optional scope:
 
 ```
@@ -29,9 +33,6 @@ Examples:
 
 ## Pull Requests
 - PRs merge `dev` → `main` after a set of related changes
-- Use the GitHub MCP (`project-0-agent-patterns-lab-github` / `create_pull_request`) -- `gh` CLI is **installed** and can be used as alternative tool
-- Write PR body to a temp file and use `--body-file` if using CLI fallback (PowerShell has no heredocs)
-
-## PowerShell Caveats
-- No heredoc (`<<EOF`) -- write multi-line strings to a temp file instead
+- Use `gh` CLI (preferred) or GitHub MCP for PR creation
+- Write PR body to a temp file and use `--body-file` (PowerShell has no heredocs)
 - Use `@" ... "@` here-strings only for simple cases (no special chars)

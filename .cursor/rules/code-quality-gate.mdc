@@ -6,29 +6,15 @@ alwaysApply: false
 
 # Code Quality Gate
 
-When editing Python files in `examples/*/src/`, verify these conventions:
+When editing Python files in `examples/*/src/`, verify:
 
-## FastAPI App (`app.py`)
-- Has `/health` endpoint returning `{"status": "ok"}`
-- Uses `lifespan` context manager (not `@app.on_event`)
-- Calls `setup_tracing()` in lifespan
-- All endpoints are `async def`
-- Request/response use Pydantic models
-
-## Agent Nodes
-- Type hints on all function signatures and variables
-- Uses `verbose_log("AgentName", ...)` for debug output
-- State is a `TypedDict` or Pydantic model (not plain dict)
-- Agent functions are async: `async def node(state: State) -> dict`
+- Type hints on all functions and variables
+- All agent nodes and endpoints are `async def`
+- State is `TypedDict` or Pydantic model (not plain dict)
+- `verbose_log("AgentName", ...)` in agent logic
+- `setup_tracing()` called in app lifespan
+- `/health` endpoint returning `{"status": "ok"}`
+- `agent_common` imported from workspace, no cross-package relative imports
 - No bare `except:` -- catch specific exceptions
 
-## Imports
-- `agent_common` imported from workspace (`from agent_common.tracing import ...`)
-- No relative imports crossing package boundaries
-
-## Quick Checklist
-- [ ] Type hints on every function
-- [ ] `async def` for all agent nodes and endpoints
-- [ ] `verbose_log()` calls in agent logic
-- [ ] `setup_tracing()` called in app lifespan
-- [ ] `/health` endpoint present
+Full templates and checklist: see `langgraph-example-implementation` skill.

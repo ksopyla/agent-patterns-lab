@@ -1,5 +1,5 @@
 ---
-description: Tech stack conventions for Python, uv, Docker, LangGraph, FastAPI, LangSmith
+description: Core tech stack constraints and commands
 alwaysApply: true
 ---
 
@@ -7,56 +7,24 @@ alwaysApply: true
 
 ## Python
 - Python 3.14+, async-first, type hints on all functions and variables
-- Python versions managed by uv (`uv python install 3.14`), NOT pyenv or system installs
-- `.python-version` file pins the project to 3.14
-- Use `ruff` for linting and formatting
-- Use `pytest` with `asyncio_mode = "auto"` for tests
+- Use `ruff` for linting/formatting, `pytest` with `asyncio_mode = "auto"` for tests
 
 ## Linting & Type Checking Commands
 - Lint: `uv run ruff check .`
-- Format check: `uv run ruff format --check .`
+- Format: `uv run ruff format --check .`
 - Type check: `uv run python scripts/linting/run_mypy.py`
 - Tests: `uv run python scripts/testing/run_test_suite.py`
-- **NEVER run `mypy` directly across multiple examples** -- each example has its own `src/` package, so a bare `mypy libs/ examples/` causes "Duplicate module named src" errors. Always use the per-directory wrapper script.
-- When editing `.github/workflows/ci.yml`, use the same scripts listed above -- CI and local dev must run identical commands.
-
-## uv
-- Use `uv add` to add dependencies (never pip install)
-- Use `uv run` to execute scripts and commands
-- Use `uv sync --all-packages` to install workspace
-- Use `uv python install <version>` to install Python versions (replaces pyenv)
-- Use `uv python list` to see available/installed versions
-- Each example is a workspace member with its own `pyproject.toml`
+- **NEVER run `mypy` directly across multiple examples** -- each example has its own `src/` package, causing "Duplicate module named src" errors. Always use the per-directory wrapper.
+- CI (`ci.yml`) must use these same wrapper scripts.
 
 ## Docker
-- Every example must have a `docker-compose.yml` that runs with `docker compose up --build`
-- Use multi-stage builds: builder stage installs deps, runtime stage copies only what's needed
-- Base image: `infra/docker/base/Dockerfile.agent`
-- Pass env vars via `.env` file in docker-compose
-
-## LangGraph
-- Use `langgraph.graph.StateGraph` with typed state (TypedDict or Pydantic)
-- Use checkpointer for state persistence when needed
-- Each agent node is an async function: `async def agent_node(state: State) -> dict`
-- Compile graphs with `graph.compile()`
-
-## FastAPI
-- Async endpoints only (`async def`)
-- Pydantic models for all request/response schemas
-- Include `/health` endpoint returning `{"status": "ok"}`
-- Use `lifespan` context manager for startup/shutdown
-
-## LangSmith
-- Every agent must enable tracing via `agent_common.tracing.setup_tracing()`
-- Set `LANGSMITH_TRACING=true` in environment
-
-## Verbose Mode
-- Every agent must support `VERBOSE=true` env var
-- When enabled: log reasoning steps, tool calls, inter-agent messages to stdout with timestamps
-- Use `agent_common.tracing.verbose_log()` helper
+- Base image: `infra/docker/base/Dockerfile.agent` (multi-stage build)
+- Details: see `example-scaffolder` and `docker-debugger` skills
 
 ## Project Structure
-- Each example is self-contained in `examples/NN-name/`
-- Each example has: `pyproject.toml`, `README.md`, `docker-compose.yml`, `src/`, `tests/`
-- Shared code lives in `libs/common/` (import as `agent_common`)
+- Each example: `examples/NN-name/` with `pyproject.toml`, `README.md`, `docker-compose.yml`, `src/`, `tests/`
+- Shared code: `libs/common/` (import as `agent_common`)
 - No secrets in code -- use `.env` and environment variables
+
+## Framework Conventions
+- LangGraph, FastAPI, LangSmith, verbose logging conventions: see `langgraph-example-implementation` skill
