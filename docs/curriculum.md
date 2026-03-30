@@ -154,11 +154,11 @@ graph TD
 
 | Agent | Role | Data Source |
 |-------|------|-------------|
-| Research Planner | Creates research plan | None (LLM only) |
-| News Scanner | Web search for news | DuckDuckGo (direct) |
-| Project Profiler | Project info, team, roadmap | CoinGecko API (direct httpx) |
-| Community Analyst | Community and developer activity | CoinGecko API (direct httpx) |
-| Intelligence Compiler | Synthesizes all outputs | None (LLM only) |
+| Research Planner | Extracts project identifiers, generates tailored search queries | None (LLM only) |
+| News Scanner | Web search for news, partnerships, announcements | DuckDuckGo (direct) |
+| Project Profiler | Market data, developer stats, project fundamentals | CoinGecko API (direct httpx, retry with backoff) |
+| Community Analyst | Social sentiment from Reddit, X/Twitter | DuckDuckGo (site-restricted queries) |
+| Intelligence Compiler | Synthesizes all outputs into structured report | None (LLM only) |
 
 **Architecture:**
 
@@ -166,10 +166,17 @@ graph TD
 graph TD
     ClaudeDesktop["Claude Desktop\n/ Claude Code"] -->|"MCP: research_crypto_project()"| MCP["crypto-intelligence\nMCP Server (:8001)"]
     User["User\n(POST /run)"] --> FastAPI["Agent Service\n(FastAPI :8000)"]
-    FastAPI --> Pipeline["LangGraph Pipeline\n(5 agents)"]
+    FastAPI --> Pipeline["LangGraph Pipeline"]
     MCP --> Pipeline
-    Pipeline --> DDG["DuckDuckGo"]
-    Pipeline --> CoinGecko["CoinGecko API"]
+    subgraph parallel ["Parallel Fan-Out / Fan-In"]
+        Planner["Research Planner"] --> NS["News Scanner\n(DuckDuckGo)"]
+        Planner --> PP["Project Profiler\n(CoinGecko)"]
+        Planner --> CA["Community Analyst\n(DuckDuckGo)"]
+        NS --> Compiler["Intelligence\nCompiler"]
+        PP --> Compiler
+        CA --> Compiler
+    end
+    Pipeline --> parallel
 ```
 
 **Key concepts:**
@@ -177,8 +184,10 @@ graph TD
 - Expose agent capability via MCP, not raw API wrappers (outcome-oriented tools)
 - MCP server with `FastMCP` wrapping the full LangGraph pipeline as one tool
 - Two entry points to the same graph: REST (`POST /run`) and MCP (`research_crypto_project`)
+- Parallel fan-out/fan-in: planner → [news | profiler | community] → compiler (LangGraph native `add_edge` fan-out)
+- Data source ownership: each research node owns exactly one external source (no duplication)
+- LLM-driven query generation: planner extracts `project_name`/`coin_ticker` and generates `NEWS_QUERIES`/`COMMUNITY_QUERIES` for downstream nodes
 - Software 3.0 principle: the "UI" is Claude Desktop, not a bespoke chat widget
-- Agents call data sources directly (CoinGecko via httpx, DuckDuckGo via langchain) -- MCP is for the external interface, not internal plumbing
 - Multi-container Docker Compose (agent REST service + MCP server)
 - Claude Desktop / Claude Code / Cursor integration via MCP config
 

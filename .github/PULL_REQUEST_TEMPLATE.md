@@ -27,7 +27,7 @@
 - [ ] `README.md` follows the documentation template
 - [ ] Architecture diagram (Mermaid) included
 - [ ] "Running the Example" section with exact commands
-- [ ] `docs/CHANGELOG.md` updated
+- [ ] `CHANGELOG.md` updated
 
 ### Testing
 - [ ] Tests added/updated in `tests/`

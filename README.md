@@ -13,7 +13,7 @@
 <br/>
 *From a single LangGraph pipeline to enterprise-grade, cloud-deployed agent architectures.*
 
-[Curriculum](docs/curriculum.md) · [Vision & Roadmap](docs/vision.md) · [Blog](https://ai.ksopyla.com) · [Changelog](docs/CHANGELOG.md)
+[Curriculum](docs/curriculum.md) · [Vision & Roadmap](docs/vision.md) · [Blog](https://ai.ksopyla.com) · [Changelog](CHANGELOG.md)
 
 </div>
 
@@ -27,7 +27,7 @@ This project closes that gap with **9 design patterns**, each solving a named ar
 
 ## The Approach
 
-This is a set of exmaples you can call it **Design Patterns** presenting practical design and implementation  for multi-agent systems. Each pattern:
+This is a set of examples you can call it **Design Patterns** presenting practical design and implementation for multi-agent systems. Each pattern:
 
 - Solves a **real architectural problem** that the previous pattern cannot handle
 - Has clear **"when to use / when to avoid"** criteria
@@ -89,7 +89,7 @@ Team 2 moves to an external partner. Implicit trust is gone -- JWT authenticatio
 <td>02</td>
 <td><a href="examples/02-mcp-tool-integration/">MCP Tool Integration</a></td>
 <td>Standardized tool access for agents & AI clients</td>
-<td>MCP servers/clients, Claude Code integration</td>
+<td>FastMCP, outcome-oriented tools, parallel fan-out/fan-in</td>
 </tr>
 <tr>
 <td>03</td>
@@ -242,9 +242,9 @@ agent-patterns-lab/
 │   └── src/agent_common/      # LLM config, tracing, MCP, A2A, auth helpers
 ├── docs/
 │   ├── curriculum.md          # Technical pattern-by-pattern breakdown
-│   ├── vision.md              # Full narrative, philosophy, and roadmap
-│   └── CHANGELOG.md
+│   └── vision.md              # Full narrative, philosophy, and roadmap
 ├── infra/                     # Docker base images, Azure Bicep templates
+├── CHANGELOG.md               # What changed and when
 └── .github/                   # CI/CD workflows, PR templates
 ```
 
@@ -294,7 +294,7 @@ uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type com
 - **[Full Curriculum](docs/curriculum.md)** -- detailed technical breakdown of each pattern with architecture diagrams
 - **[Vision & Roadmap](docs/vision.md)** -- the complete narrative, architectural philosophy, and future direction
 - **[Blog](https://ai.ksopyla.com)** -- in-depth write-ups for each pattern
-- **[Changelog](docs/CHANGELOG.md)** -- what changed and when
+- **[Changelog](CHANGELOG.md)** -- what changed and when
 
 ## License
 
