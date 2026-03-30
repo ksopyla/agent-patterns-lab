@@ -25,7 +25,7 @@ This skill owns the final structure, narrative, and polish.
 Do not write a finished README from assumptions. Read the real implementation first:
 - app entrypoint and agent wiring
 - tests that define the actual API and error behavior
-- `Dockerfile`, `docker-compose.yml`, and `endpoints.http`
+- `docker-compose.yml` (shared `infra/docker/base/Dockerfile.agent` via build args), `endpoints.http`
 - `.env.example` and shared config if env vars or provider selection matter
 - understand how example fits into the overall ../docs/curriculum.md and ../docs/vision.md it should match the curriculum
 

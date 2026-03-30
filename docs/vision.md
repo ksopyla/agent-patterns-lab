@@ -49,9 +49,9 @@ You are **Team 1: Intelligence**. Your job is fundamentals research -- given a c
 
 **Pattern 01** starts small. Three agents in a single LangGraph pipeline: a Research Planner breaks the task into subtasks, a News Scanner searches the web, and an Intelligence Compiler synthesizes everything into a report. It works. It's simple. It runs in one Docker container.
 
-But the News Scanner's web search is a hardcoded Python function call. What if you want Claude Code to use the same search capability? What if another team wants access to the same crypto data tools?
+But the News Scanner's web search is a hardcoded Python function call. What if you want Claude Desktop to use the same search capability? What if another team wants access to the same crypto data tools?
 
-**Pattern 02** introduces MCP. You build MCP servers for crypto data and web search. Now agents connect to tools via a standard protocol -- and so can Claude Code, Cursor, or any MCP-compatible client. The team expands to five agents: Project Profiler and Community Analyst join, each with their own MCP tool connections. The architecture moves from one container to multiple containers in Docker Compose.
+**Pattern 02** introduces MCP -- but not the way you might expect. Instead of wrapping raw APIs as MCP tools, you expose the agent pipeline itself. A `crypto-intelligence` MCP server wraps the full 5-agent research pipeline as a single `research_crypto_project` tool. Claude Desktop calls one MCP tool and gets a complete intelligence report -- the internal orchestration (five agents, CoinGecko data, DuckDuckGo search) is hidden behind the protocol. This is the real Software 3.0 lesson: expose capabilities, not plumbing. The team expands to five agents, the architecture moves to multi-container Docker Compose, and the agent now has two entry points -- REST (`POST /run`) and MCP -- serving the same graph.
 
 Now the team works well, but every request starts from scratch. You researched Arbitrum yesterday -- why are you re-scanning the same news today?
 

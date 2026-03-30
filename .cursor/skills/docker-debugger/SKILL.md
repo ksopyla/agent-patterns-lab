@@ -57,7 +57,7 @@ Use the Docker MCP (`project-0-agent-patterns-lab-docker`) for inspection:
 
 All examples use the base Dockerfile at `infra/docker/base/Dockerfile.agent`:
 - Build context is always the repo root (`../..` from the example)
-- `EXAMPLE_DIR` build arg points to the specific example folder
+- Compose sets `PACKAGE_NAME`, `EXAMPLE_PYPROJECT`, and `EXAMPLE_SRC` for that example
 - Multi-stage build: `builder` installs deps, `runtime` copies artifacts
 - `.env` file is passed via `env_file` in docker-compose
 

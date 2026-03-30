@@ -1,7 +1,7 @@
 [project]
 name = "example-02-mcp-tool-integration"
 version = "0.1.0"
-description = "Pattern 02: MCP Tool Integration -- standardized tool access via Model Context Protocol"
+description = "Pattern 02: MCP Tool Integration -- expose agent pipeline via Model Context Protocol"
 requires-python = ">=3.14"
 dependencies = [
     "langgraph>=0.4",
@@ -9,7 +9,6 @@ dependencies = [
     "langchain-community>=0.3",
     "langchain-openai>=0.3",
     "langchain-anthropic>=0.3",
-    "langchain-mcp-adapters>=0.2",
     "langsmith>=0.3",
     "mcp>=1.0",
     "duckduckgo-search>=8.0",

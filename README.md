@@ -43,6 +43,11 @@ The progression itself tells a story. In Pattern 01 you build a familiar `POST /
 Abstract patterns are hard to internalize. Concrete stories stick.
 
 All nine patterns share a single, evolving domain: **a crypto intelligence platform** with three specialized teams that emerge as complexity demands them. Each team's arrival creates a genuine architectural challenge that motivates the next pattern.
+Teams that emerge as complexity demands them: 
+- Team 1: Intelligence - Fundamentals Research, News Scanner, Project Profiler, Community Analyst, Intelligence Compiler
+- Team 2: Technical Analysis - Price Collector, Indicator Calculator, Level Analyst, Technical Reporter
+- Team 3: Trading Signals - Signal Synthesizer, Risk Assessor
+
 
 ### Act 1 &mdash; One Team, Growing Capabilities
 <sup>Patterns 01-04</sup>
@@ -213,6 +218,8 @@ make example EX=01-orchestrator-pipeline
 
 Examples are designed to be run from inside their own folders, but they currently
 share the repository root `.env` file and the workspace `libs/common` package.
+Container images are built from `infra/docker/base/Dockerfile.agent` with
+per-example build arguments set in each `docker-compose.yml`.
 
 ## Project Structure
 
@@ -222,7 +229,6 @@ agent-patterns-lab/
 │   ├── 01-orchestrator-pipeline/
 │   │   ├── README.md          # Pattern documentation (theory + walkthrough)
 │   │   ├── pyproject.toml
-│   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── endpoints.http     # Ready-to-run REST requests
 │   │   ├── src/

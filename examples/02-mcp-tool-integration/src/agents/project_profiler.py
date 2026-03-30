@@ -1,7 +1,12 @@
-"""Project Profiler agent -- gathers project fundamentals via MCP tools.
+"""Project Profiler agent -- gathers project fundamentals from CoinGecko.
 
-This agent uses the crypto-data MCP server to get structured project information
-from CoinGecko, demonstrating MCP-based tool access.
+Reads:  state["project_name"], state["coin_ticker"]
+Writes: state["profile"]
+
+Owns ALL CoinGecko data: market stats, price, categories, description,
+genesis date, homepage, AND developer_data (GitHub stats from CoinGecko).
+Uses the LLM-extracted project_name from research_planner instead of
+brittle regex normalization.
 """
 
 from __future__ import annotations
@@ -13,57 +18,88 @@ from agent_common.tracing import verbose_log
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import AgentState
-from src.mcp_setup import get_mcp_tool, mcp_result_to_text, normalize_project_query
+from src.coingecko import get_coin_info, get_coin_price, search_coins
 
 SYSTEM_PROMPT = """\
-You are a crypto project profiler. You receive structured data from CoinGecko
-about a crypto project (info and current price).
+You are a crypto project profiler. You receive structured data from CoinGecko.
 
 Create a concise project profile covering:
-- What the project does (technology, use case)
-- Key stats: market cap, current price, 24h change
-- Project maturity: genesis date, development activity
-- Category positioning and notable links
+1. **Project overview** — what it does, technology, use case
+2. **Market data** — current price, market cap, 24h volume, 24h change percentage
+3. **Project maturity** — genesis date, categories, notable links (homepage, GitHub)
+4. **Developer activity** — GitHub stars, forks, contributors, recent commits, \
+merged PRs (from developer_data)
+5. **Exchanges & liquidity** — where it trades (if available)
 
-Be factual and quantitative where possible."""
+Be factual and quantitative. If a data field is missing or unavailable, \
+state "Data not available" — do NOT guess or hallucinate numbers."""
+
+
+async def _resolve_coin_id(project_name: str, ticker: str) -> str:
+    """Find the CoinGecko coin ID using project name, falling back to ticker."""
+    for query in [project_name, ticker]:
+        if not query:
+            continue
+        try:
+            search_results = await search_coins(query)
+            coins = json.loads(search_results) if search_results else []
+            if coins:
+                coin_id: str = coins[0]["id"]
+                verbose_log(
+                    "ProjectProfiler",
+                    f"Resolved {query!r} → coin_id={coin_id!r}",
+                )
+                return coin_id
+        except Exception as exc:
+            verbose_log("ProjectProfiler", f"Search for {query!r} failed: {exc}")
+
+    fallback = project_name.lower().replace(" ", "-")
+    verbose_log("ProjectProfiler", f"Using fallback coin_id={fallback!r}")
+    return fallback
 
 
 async def project_profiler_node(state: AgentState) -> dict[str, str]:
-    """Gather project fundamentals using MCP crypto-data tools."""
-    user_input = state["input"]
-    verbose_log("ProjectProfiler", f"Profiling: {user_input[:80]}")
-    search_query = normalize_project_query(user_input)
+    """Gather project fundamentals from CoinGecko."""
+    project_name = state.get("project_name", state["input"])
+    ticker = state.get("coin_ticker", "")
+    verbose_log("ProjectProfiler", f"Profiling: {project_name} ({ticker})")
 
-    search_tool = get_mcp_tool("search_coins")
-    search_results = await search_tool.ainvoke({"query": search_query})
-    search_results_text = mcp_result_to_text(search_results)
-    verbose_log("ProjectProfiler", f"Coin search returned: {search_results_text[:200]}")
+    coin_id = await _resolve_coin_id(project_name, ticker)
 
-    coins = json.loads(search_results_text) if search_results_text else []
-    coin_id = coins[0]["id"] if coins else search_query.lower().replace(" ", "-")
+    coin_info: str
+    coin_price: str
+    try:
+        coin_info = await get_coin_info(coin_id)
+        verbose_log("ProjectProfiler", "Got coin info (includes developer_data)")
+    except Exception as exc:
+        verbose_log("ProjectProfiler", f"get_coin_info failed: {exc}")
+        coin_info = f"[Project data unavailable: {type(exc).__name__}]"
 
-    info_tool = get_mcp_tool("get_coin_info")
-    price_tool = get_mcp_tool("get_coin_price")
+    try:
+        coin_price = await get_coin_price(coin_id)
+        verbose_log("ProjectProfiler", "Got price data")
+    except Exception as exc:
+        verbose_log("ProjectProfiler", f"get_coin_price failed: {exc}")
+        coin_price = "[Price data unavailable]"
 
-    coin_info = mcp_result_to_text(await info_tool.ainvoke({"coin_id": coin_id}))
-    coin_price = mcp_result_to_text(await price_tool.ainvoke({"coin_id": coin_id}))
-    verbose_log("ProjectProfiler", "Got coin info and price data via MCP")
+    try:
+        llm = get_chat_model()
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(
+                    content=(
+                        f"Project: {project_name} ({ticker})\n\n"
+                        f"CoinGecko project info (includes developer_data):\n{coin_info}\n\n"
+                        f"Current price data:\n{coin_price}"
+                    )
+                ),
+            ]
+        )
+        profile = str(response.content)
+    except Exception as exc:
+        verbose_log("ProjectProfiler", f"LLM call failed: {exc}")
+        profile = f"[Profile generation failed: {type(exc).__name__}]\nRaw info: {coin_info}\nRaw price: {coin_price}"
 
-    llm = get_chat_model()
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(
-                content=(
-                    f"Project query: {user_input}\n\n"
-                    f"CoinGecko project info:\n{coin_info}\n\n"
-                    f"Current price data:\n{coin_price}"
-                )
-            ),
-        ]
-    )
-
-    profile = str(response.content)
     verbose_log("ProjectProfiler", f"Profile complete ({len(profile)} chars)")
-
     return {"profile": profile}

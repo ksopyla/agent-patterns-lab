@@ -1,4 +1,11 @@
-"""End-to-end tests for the full Team 1 intelligence pipeline graph."""
+"""End-to-end tests for the full Team 1 intelligence pipeline graph.
+
+The graph architecture is fan-out/fan-in:
+  research_planner → [news_scanner | project_profiler | community_analyst] → intelligence_compiler
+
+The three middle nodes run in parallel, so we cannot assert a fixed order for
+them -- only that all five execute and the compiler runs last.
+"""
 
 from __future__ import annotations
 
@@ -13,22 +20,27 @@ async def test_graph_executes_all_five_nodes(monkeypatch: pytest.MonkeyPatch) ->
     async def fake_research_planner(state: dict[str, str]) -> dict[str, str]:
         call_order.append("research_planner")
         assert state["input"] == "Research Arbitrum"
-        return {"plan": "1. News\n2. Profile\n3. Community"}
+        return {
+            "plan": "NEWS_QUERIES:\n- Arbitrum news\nCOMMUNITY_QUERIES:\n- Arbitrum reddit",
+            "project_name": "Arbitrum",
+            "coin_ticker": "ARB",
+        }
 
     async def fake_news_scanner(state: dict[str, str]) -> dict[str, str]:
         call_order.append("news_scanner")
-        assert state["plan"] == "1. News\n2. Profile\n3. Community"
+        assert state["project_name"] == "Arbitrum"
+        assert state["coin_ticker"] == "ARB"
         return {"news": "Orbit chains launched. TVL over $10B."}
 
     async def fake_project_profiler(state: dict[str, str]) -> dict[str, str]:
         call_order.append("project_profiler")
-        assert "Orbit chains" in state["news"]
+        assert state["project_name"] == "Arbitrum"
         return {"profile": "L2 optimistic rollup. Price $1.23, Market cap $4.5B."}
 
     async def fake_community_analyst(state: dict[str, str]) -> dict[str, str]:
         call_order.append("community_analyst")
-        assert "L2 optimistic rollup" in state["profile"]
-        return {"community": "Strong: 500k Twitter, 1200 commits/month."}
+        assert state["project_name"] == "Arbitrum"
+        return {"community": "Strong: active Reddit, positive Twitter sentiment."}
 
     async def fake_intelligence_compiler(state: dict[str, str]) -> dict[str, str]:
         call_order.append("intelligence_compiler")
@@ -46,12 +58,13 @@ async def test_graph_executes_all_five_nodes(monkeypatch: pytest.MonkeyPatch) ->
     graph = graph_module.build_graph()
     result = await graph.ainvoke({"input": "Research Arbitrum"})
 
-    assert call_order == [
-        "research_planner",
-        "news_scanner",
-        "project_profiler",
-        "community_analyst",
-        "intelligence_compiler",
-    ]
+    assert call_order[0] == "research_planner"
+    assert call_order[-1] == "intelligence_compiler"
+
+    parallel_nodes = set(call_order[1:-1])
+    assert parallel_nodes == {"news_scanner", "project_profiler", "community_analyst"}
+
     assert "Executive Summary" in result["report"]
     assert result["profile"] == "L2 optimistic rollup. Price $1.23, Market cap $4.5B."
+    assert result["project_name"] == "Arbitrum"
+    assert result["coin_ticker"] == "ARB"

@@ -18,7 +18,7 @@ Trigger this skill when:
 
 This skill focuses on:
 - example folder structure
-- `Dockerfile` and `docker-compose.yml`
+- `docker-compose.yml` (shared `infra/docker/base/Dockerfile.agent` via build args)
 - lightweight `README.md` scaffolding
 - HTTP verification helpers such as `endpoints.http`
 
@@ -35,7 +35,6 @@ Every example should start with this structure:
 
 ```text
 examples/NN-name/
-├── Dockerfile
 ├── pyproject.toml
 ├── README.md
 ├── docker-compose.yml
@@ -58,6 +57,7 @@ examples/NN-name/
 
 Notes:
 - Examples should be runnable from inside their own folder with `docker compose up --build`.
+- Do not add a per-example `Dockerfile`. Use the shared `infra/docker/base/Dockerfile.agent` and set `PACKAGE_NAME`, `EXAMPLE_PYPROJECT`, and `EXAMPLE_SRC` in compose `build.args` (see `docker-compose.yml` template below).
 - Examples may still depend on the repo-root `.env`, workspace `uv.lock`, and `libs/common`.
 - Do not create an example-local `config.py` for shared LLM settings. Use `agent_common.config`.
 - Reuse the repo-root `LANGSMITH_PROJECT` value. Do not add per-example LangSmith project env vars just to separate traces.
@@ -95,46 +95,17 @@ Add extra dependencies only when the example truly needs them, for example:
 - `python-jose` for auth examples
 - database drivers for persistence examples
 
-## `Dockerfile` Template
+## Shared agent image (`infra/docker/base/Dockerfile.agent`)
 
-Each example should have its own small, explicit `Dockerfile`. Avoid hidden
-folder-name inference in Docker build args.
+The multi-stage build lives in one place. Each example selects its workspace
+package and source tree via compose build args:
 
-```dockerfile
-FROM python:3.14-slim AS builder
+- `PACKAGE_NAME` — must match `[project].name` in `examples/NN-name/pyproject.toml` (convention: `example-NN-name`).
+- `EXAMPLE_PYPROJECT` — path to that `pyproject.toml` under the repo root (e.g. `examples/NN-name/pyproject.toml`).
+- `EXAMPLE_SRC` — path to that example’s `src/` directory (e.g. `examples/NN-name/src/`).
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-WORKDIR /app
-
-COPY pyproject.toml uv.lock ./
-COPY libs/ libs/
-COPY examples/NN-name/pyproject.toml examples/NN-name/pyproject.toml
-
-RUN uv sync --frozen --package "example-NN-name" --no-dev
-
-FROM python:3.14-slim AS runtime
-
-WORKDIR /app
-
-COPY --from=builder /app/.venv /app/.venv
-COPY libs/common/src/agent_common/ /app/agent_common/
-COPY examples/NN-name/src/ /app/src/
-
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app"
-ENV PYTHONUNBUFFERED=1
-
-EXPOSE 8000
-
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Rules:
-- Keep the package name explicit in the Dockerfile.
-- Keep the copied example path explicit in the Dockerfile.
-- Default the command to `uvicorn src.app:app ...` unless the example is not HTTP-based.
-- For extra services in the same example, prefer compose `command:` overrides over extra Dockerfiles unless runtime contents differ.
+Default `CMD` is `uvicorn src.app:app`. For extra processes in the same example,
+use compose `command:` on another service that reuses the same image build.
 
 ## `docker-compose.yml` Template
 
@@ -143,7 +114,11 @@ services:
   agent:
     build:
       context: ../..
-      dockerfile: examples/NN-name/Dockerfile
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        PACKAGE_NAME: example-NN-name
+        EXAMPLE_PYPROJECT: examples/NN-name/pyproject.toml
+        EXAMPLE_SRC: examples/NN-name/src/
     ports:
       - "8000:8000"
     env_file:
@@ -247,8 +222,7 @@ README rules:
 ## Scaffolding Workflow
 
 1. Create the example folder structure and `pyproject.toml`.
-2. Add an example-local `Dockerfile`.
-3. Add an example-local `docker-compose.yml`.
+2. Add an example-local `docker-compose.yml` with build args pointing at `infra/docker/base/Dockerfile.agent`.
 4. Add `endpoints.http` for quick verification.
 5. Draft the example README shell with example-folder-first run instructions.
 6. Switch to the LangGraph code skill for `src/` and `tests/`.
@@ -257,10 +231,8 @@ README rules:
 ## Checklist
 
 After scaffolding, verify:
-- [ ] The example has its own `Dockerfile`
 - [ ] `docker-compose.yml` works from inside the example folder
-- [ ] The compose file points at `examples/NN-name/Dockerfile`
-- [ ] The Dockerfile uses explicit package and source paths
+- [ ] The compose file builds from `infra/docker/base/Dockerfile.agent` with explicit `PACKAGE_NAME`, `EXAMPLE_PYPROJECT`, and `EXAMPLE_SRC`
 - [ ] `README.md` is a runnable scaffold, not an invented final doc
 - [ ] `README.md` documents the example-folder run flow first
 - [ ] `README.md` explains the repo-root `.env` dependency if present

@@ -1,4 +1,4 @@
-"""Unit tests for the crypto-data MCP server tools."""
+"""Unit tests for the CoinGecko API client."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from src.mcp_servers.crypto_data import get_coin_info, get_coin_price, search_coins
+from src.coingecko import get_coin_info, get_coin_price, search_coins
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_search_coins_returns_formatted_results() -> None:
             {"id": "ethereum", "name": "Ethereum", "symbol": "ETH", "market_cap_rank": 2},
         ]
     }
-    with patch("src.mcp_servers.crypto_data._coingecko_get", new_callable=AsyncMock, return_value=mock_response):
+    with patch("src.coingecko._get", new_callable=AsyncMock, return_value=mock_response):
         result = await search_coins("arbitrum")
 
     data = json.loads(result)
@@ -42,7 +42,7 @@ async def test_get_coin_info_extracts_key_fields() -> None:
         "community_data": {"twitter_followers": 500000},
         "developer_data": {"commits_4_weeks": 120, "forks": 350, "stars": 8000, "pull_request_contributors": 0},
     }
-    with patch("src.mcp_servers.crypto_data._coingecko_get", new_callable=AsyncMock, return_value=mock_response):
+    with patch("src.coingecko._get", new_callable=AsyncMock, return_value=mock_response):
         result = await get_coin_info("arbitrum")
 
     data = json.loads(result)
@@ -63,7 +63,7 @@ async def test_get_coin_price_returns_market_data() -> None:
             "usd_24h_change": 5.67,
         }
     }
-    with patch("src.mcp_servers.crypto_data._coingecko_get", new_callable=AsyncMock, return_value=mock_response):
+    with patch("src.coingecko._get", new_callable=AsyncMock, return_value=mock_response):
         result = await get_coin_price("arbitrum")
 
     data = json.loads(result)

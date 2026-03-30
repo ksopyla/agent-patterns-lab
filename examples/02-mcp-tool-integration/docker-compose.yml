@@ -1,33 +1,34 @@
 services:
-  crypto-data-mcp:
+  crypto-intelligence-mcp:
     build:
       context: ../..
-      dockerfile: examples/02-mcp-tool-integration/Dockerfile
-    command: ["uvicorn", "src.mcp_servers.crypto_data:app", "--host", "0.0.0.0", "--port", "8000"]
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        PACKAGE_NAME: example-02-mcp-tool-integration
+        EXAMPLE_PYPROJECT: examples/02-mcp-tool-integration/pyproject.toml
+        EXAMPLE_SRC: examples/02-mcp-tool-integration/src/
+    command: ["uvicorn", "src.mcp_servers.crypto_intelligence:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8001:8000"
     env_file:
       - ../../.env
-    healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/sse').raise_for_status()"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+    environment:
+      - VERBOSE=${VERBOSE:-true}
 
   agent:
     build:
       context: ../..
-      dockerfile: examples/02-mcp-tool-integration/Dockerfile
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        PACKAGE_NAME: example-02-mcp-tool-integration
+        EXAMPLE_PYPROJECT: examples/02-mcp-tool-integration/pyproject.toml
+        EXAMPLE_SRC: examples/02-mcp-tool-integration/src/
     ports:
       - "8000:8000"
     env_file:
       - ../../.env
     environment:
       - VERBOSE=${VERBOSE:-true}
-      - CRYPTO_DATA_MCP_URL=http://crypto-data-mcp:8000/sse
-    depends_on:
-      crypto-data-mcp:
-        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
       interval: 10s

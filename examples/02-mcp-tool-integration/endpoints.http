@@ -1,4 +1,8 @@
-### Health
+### ============================================================
+### Agent Service -- REST entry point (FastAPI :8000)
+### ============================================================
+
+### Health check
 GET http://localhost:8000/health
 
 ### Run pipeline - Research a crypto project
@@ -6,7 +10,7 @@ POST http://localhost:8000/run
 Content-Type: application/json
 
 {
-    "input": "Research the Arbitrum crypto project"
+    "input": "Research the Bittensor crypto project"
 }
 
 ### Run pipeline - Another project
@@ -14,5 +18,33 @@ POST http://localhost:8000/run
 Content-Type: application/json
 
 {
-    "input": "Research the Solana crypto project"
+    "input": "Research the Solana crypto project, what are the latest facts about the technical aspects and development progress"
 }
+
+### Validation - too short (expect 422)
+POST http://localhost:8000/run
+Content-Type: application/json
+
+{
+    "input": "ab"
+}
+
+### ============================================================
+### crypto-intelligence MCP Server -- MCP entry point (:8001)
+###
+### The MCP server exposes `research_crypto_project(project_name)`
+### which runs the same 5-agent pipeline as POST /run above.
+###
+### MCP tools are NOT callable via REST -- connect with an MCP client:
+###
+###   Claude Desktop: add to %APPDATA%\Claude\claude_desktop_config.json
+###     { "mcpServers": { "crypto-intelligence": { "url": "http://localhost:8001/sse" } } }
+###
+###   Claude Code:
+###     claude mcp add --transport sse crypto-intelligence http://localhost:8001/sse
+###
+### Verify MCP server is alive:
+### ============================================================
+
+### MCP SSE endpoint - verify it responds (opens SSE stream)
+GET http://localhost:8001/sse
