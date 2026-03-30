@@ -144,44 +144,43 @@ graph TD
 
 **Folder:** `examples/02-mcp-tool-integration/`
 
-**Goal:** Introduce MCP as the standardized tool layer between agents and external data. Build a custom `crypto-intelligence` MCP server wrapping the CoinGecko API, connect agents as MCP clients, and show how Claude Desktop can use the same tools -- all through one protocol.
+**Goal:** Expose the agent pipeline as an MCP server so any AI client can use it. Build a `crypto-intelligence` MCP server that wraps the full 5-agent research pipeline as a single `research_crypto_project` tool. Claude Desktop, Cursor, or Claude Code calls one MCP tool and gets a complete intelligence report -- the internal orchestration is hidden.
 
-**What it solves:** In Pattern 01, tools are hardcoded Python function calls locked inside the codebase. External AI clients like Claude Desktop can't access your agent's crypto research tools, and adding new data sources requires code changes in every agent. MCP provides the abstraction: you build tools as MCP servers, any MCP-compatible client (your agents, Claude Desktop, Cursor) discovers and uses them through a standard protocol.
+**What it solves:** In Pattern 01, the pipeline is locked behind `POST /run` -- a REST endpoint that only custom HTTP clients can call. Claude Desktop can't access your agent's research capability. MCP solves this: you expose the agent's **capability** (not raw API wrappers) as an MCP tool, and any MCP-compatible client discovers and uses it through a standard protocol.
 
-**Team focus:** Team 1 (Intelligence) -- expands to full 5-agent lineup. Two new agents (Project Profiler, Community Analyst) use MCP tools; the News Scanner keeps its direct DuckDuckGo call, showing that MCP and direct tools coexist pragmatically.
+**Team focus:** Team 1 (Intelligence) -- expands to full 5-agent lineup with two entry points: REST (`POST /run`) and MCP (`research_crypto_project` tool).
 
 **Agents:**
 
-| Agent | Role | Tool |
-|-------|------|------|
+| Agent | Role | Data Source |
+|-------|------|-------------|
 | Research Planner | Creates research plan | None (LLM only) |
-| News Scanner | Web search for news | DuckDuckGo (direct, same as P01) |
-| Project Profiler | Project info, team, roadmap | crypto-intelligence MCP |
-| Community Analyst | Community and developer activity | crypto-intelligence MCP |
+| News Scanner | Web search for news | DuckDuckGo (direct) |
+| Project Profiler | Project info, team, roadmap | CoinGecko API (direct httpx) |
+| Community Analyst | Community and developer activity | CoinGecko API (direct httpx) |
 | Intelligence Compiler | Synthesizes all outputs | None (LLM only) |
 
 **Architecture:**
 
 ```mermaid
 graph TD
+    ClaudeDesktop["Claude Desktop\n/ Claude Code"] -->|"MCP: research_crypto_project()"| MCP["crypto-intelligence\nMCP Server (:8001)"]
     User["User\n(POST /run)"] --> FastAPI["Agent Service\n(FastAPI :8000)"]
     FastAPI --> Pipeline["LangGraph Pipeline\n(5 agents)"]
-    Pipeline -->|"MCP client (SSE)"| CryptoMCP["crypto-intelligence\nMCP Server (:8001)"]
-    Pipeline -->|direct| DDG["DuckDuckGo\n(web search)"]
-    CryptoMCP --> CoinGecko["CoinGecko API"]
-    ClaudeDesktop["Claude Desktop\n/ Cursor"] -->|MCP| CryptoMCP
+    MCP --> Pipeline
+    Pipeline --> DDG["DuckDuckGo"]
+    Pipeline --> CoinGecko["CoinGecko API"]
 ```
 
 **Key concepts:**
 
-- MCP server implementation with `FastMCP` (CoinGecko tools exposed as MCP resources)
-- MCP client in LangGraph agents via `langchain-mcp-adapters` (`MultiServerMCPClient`)
-- Tool abstraction: agents call MCP tools without knowing the underlying API
-- MCP and direct tools coexist -- use MCP for shared, reusable domain tools; keep direct calls for single-use commodity tools
-- Multi-container Docker Compose (agent service + crypto-intelligence MCP server)
-- Claude Desktop / Cursor integration: configure MCP clients to connect to the same servers
-- Free crypto data via CoinGecko API (no API key required for basic endpoints)
-- Software 3.0 principle: agents expose capabilities via protocol, not bespoke APIs
+- Expose agent capability via MCP, not raw API wrappers (outcome-oriented tools)
+- MCP server with `FastMCP` wrapping the full LangGraph pipeline as one tool
+- Two entry points to the same graph: REST (`POST /run`) and MCP (`research_crypto_project`)
+- Software 3.0 principle: the "UI" is Claude Desktop, not a bespoke chat widget
+- Agents call data sources directly (CoinGecko via httpx, DuckDuckGo via langchain) -- MCP is for the external interface, not internal plumbing
+- Multi-container Docker Compose (agent REST service + MCP server)
+- Claude Desktop / Claude Code / Cursor integration via MCP config
 
 **Builds on:** Pattern 01
 
@@ -204,8 +203,10 @@ graph TD
     User --> FastAPI["Agent Service\n(FastAPI :8000)"]
     FastAPI --> Pipeline["LangGraph Pipeline\n+ Checkpointer"]
     Pipeline --> PG["PostgreSQL\n(conversation state + research cache)"]
-    Pipeline --> CryptoMCP["crypto-intelligence MCP\n(:8001)"]
+    Pipeline --> CoinGecko["CoinGecko API"]
     Pipeline --> DDG["DuckDuckGo\n(web search)"]
+    ClaudeDesktop["Claude Desktop"] -->|MCP| MCP["crypto-intelligence\nMCP (:8001)"]
+    MCP --> Pipeline
 ```
 
 **Key concepts:**

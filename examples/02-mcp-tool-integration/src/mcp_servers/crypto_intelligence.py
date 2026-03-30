@@ -1,109 +1,60 @@
-"""MCP server exposing CoinGecko crypto data as tools.
+"""MCP server exposing the crypto intelligence agent pipeline as a tool.
+
+This is the Software 3.0 entry point: instead of a REST endpoint, the agent
+exposes its capability via MCP. Any MCP client (Claude Desktop, Cursor,
+Claude Code) can call `research_crypto_project` and get a full intelligence
+report -- the same result as POST /run, through a standard protocol.
 
 Run standalone: python -m src.mcp_servers.crypto_intelligence
-Connects to the free CoinGecko API (no API key required, rate-limited ~30 req/min).
 """
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
-import httpx
+from agent_common.tracing import setup_tracing, verbose_log
 from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
 
-COINGECKO_BASE = "https://api.coingecko.com/api/v3"
+from src.agents.graph import build_graph
+
+setup_tracing()
 
 mcp = FastMCP(
     "crypto-intelligence",
     host="0.0.0.0",
     port=8000,
-    transport_security=TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=["127.0.0.1:*", "localhost:*", "crypto-intelligence-mcp:*"],
-    ),
 )
 app = mcp.sse_app()
 
-
-async def _coingecko_get(path: str, params: dict[str, str] | None = None) -> Any:
-    """Make a GET request to CoinGecko API."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(f"{COINGECKO_BASE}{path}", params=params or {})
-        resp.raise_for_status()
-        return resp.json()  # noqa: ANN401
+_graph = build_graph()
 
 
 @mcp.tool()
-async def search_coins(query: str) -> str:
-    """Search for cryptocurrency projects by name or symbol.
+async def research_crypto_project(query: str) -> str:
+    """Research a cryptocurrency project and produce a structured intelligence report.
 
-    Returns a list of matching coins with their IDs (use the ID for other tools).
+    Accepts the same natural-language research queries as the REST API (POST /run).
+    Runs a 5-agent pipeline: Research Planner, News Scanner, Project Profiler,
+    Community Analyst, and Intelligence Compiler.
+
+    Example queries:
+    - "Research the Arbitrum crypto project"
+    - "Analyze Solana's recent partnerships and developer activity"
+    - "What is Ethereum's community health and market position?"
+
+    Args:
+        query: A natural-language research request about a crypto project.
+
+    Returns:
+        A structured intelligence report with executive summary, market snapshot,
+        key findings, recent developments, community health, risk factors, and outlook.
     """
-    data = await _coingecko_get("/search", {"query": query})
-    coins = data.get("coins", [])[:8]
-    results = [
-        {"id": c["id"], "name": c["name"], "symbol": c["symbol"], "market_cap_rank": c.get("market_cap_rank")}
-        for c in coins
-    ]
-    return json.dumps(results, indent=2)
+    verbose_log("MCP", f"research_crypto_project({query!r:.80}) -- starting pipeline")
 
+    result = await _graph.ainvoke({"input": query})
 
-@mcp.tool()
-async def get_coin_info(coin_id: str) -> str:
-    """Get detailed information about a cryptocurrency project.
+    report: str = result.get("report", "")
+    verbose_log("MCP", f"research_crypto_project -- complete ({len(report)} chars)")
 
-    Returns: name, symbol, description, categories, links, genesis date,
-    and developer/community stats. Use the coin ID from search_coins.
-    """
-    data = await _coingecko_get(
-        f"/coins/{coin_id}",
-        {"localization": "false", "tickers": "false", "market_data": "false", "community_data": "true"},
-    )
-    info = {
-        "name": data.get("name"),
-        "symbol": data.get("symbol"),
-        "description": (data.get("description", {}).get("en", ""))[:1500],
-        "categories": data.get("categories", []),
-        "genesis_date": data.get("genesis_date"),
-        "homepage": data.get("links", {}).get("homepage", [None])[0],
-        "github": data.get("links", {}).get("repos_url", {}).get("github", []),
-        "twitter": data.get("links", {}).get("twitter_screen_name"),
-        "community_data": data.get("community_data", {}),
-        "developer_data": {
-            k: v for k, v in data.get("developer_data", {}).items() if isinstance(v, (int, float)) and v > 0
-        },
-    }
-    return json.dumps(info, indent=2, default=str)
-
-
-@mcp.tool()
-async def get_coin_price(coin_id: str, vs_currency: str = "usd") -> str:
-    """Get current price, market cap, volume, and 24h change for a cryptocurrency.
-
-    Use the coin ID from search_coins (e.g., 'bitcoin', 'ethereum', 'arbitrum').
-    """
-    data = await _coingecko_get(
-        "/simple/price",
-        {
-            "ids": coin_id,
-            "vs_currencies": vs_currency,
-            "include_market_cap": "true",
-            "include_24hr_vol": "true",
-            "include_24hr_change": "true",
-        },
-    )
-    coin_data = data.get(coin_id, {})
-    price_info = {
-        "coin_id": coin_id,
-        "currency": vs_currency,
-        "price": coin_data.get(vs_currency),
-        "market_cap": coin_data.get(f"{vs_currency}_market_cap"),
-        "volume_24h": coin_data.get(f"{vs_currency}_24h_vol"),
-        "change_24h_pct": coin_data.get(f"{vs_currency}_24h_change"),
-    }
-    return json.dumps(price_info, indent=2)
+    return report
 
 
 if __name__ == "__main__":

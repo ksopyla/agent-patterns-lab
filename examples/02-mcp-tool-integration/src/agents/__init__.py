@@ -1,4 +1,4 @@
-"""Full Team 1 intelligence pipeline with MCP tool integration."""
+"""Full Team 1 intelligence pipeline -- exposed via REST and MCP."""
 
 from src.agents.graph import build_graph
 

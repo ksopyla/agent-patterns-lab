@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -37,17 +36,13 @@ class _ExplodingGraph:
 
 
 def _make_client(monkeypatch: pytest.MonkeyPatch, graph: object) -> TestClient:
-    """Create a TestClient with MCP lifecycle mocked and graph pre-injected."""
+    """Create a TestClient with a pre-injected graph on app.state."""
     monkeypatch.setattr(app_module, "build_graph", lambda: graph)
     return TestClient(app_module.app)
 
 
 def test_health_endpoint_returns_ok() -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        TestClient(app_module.app) as client,
-    ):
+    with TestClient(app_module.app) as client:
         response = client.get("/health")
 
     assert response.status_code == 200
@@ -70,11 +65,7 @@ def test_run_endpoint_executes_graph(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: {"run_name": "test-run", "tags": ["example:02-mcp-tool-integration"]},
     )
 
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        _make_client(monkeypatch, fake_graph) as client,
-    ):
+    with _make_client(monkeypatch, fake_graph) as client:
         response = client.post("/run", json={"input": "Research Arbitrum"})
 
     assert response.status_code == 200
@@ -90,55 +81,35 @@ def test_run_endpoint_executes_graph(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_run_endpoint_validates_missing_input() -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        TestClient(app_module.app) as client,
-    ):
+    with TestClient(app_module.app) as client:
         response = client.post("/run", json={})
 
     assert response.status_code == 422
 
 
 def test_run_endpoint_rejects_empty_input() -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        TestClient(app_module.app) as client,
-    ):
+    with TestClient(app_module.app) as client:
         response = client.post("/run", json={"input": ""})
 
     assert response.status_code == 422
 
 
 def test_run_endpoint_rejects_too_short_input() -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        TestClient(app_module.app) as client,
-    ):
+    with TestClient(app_module.app) as client:
         response = client.post("/run", json={"input": "ab"})
 
     assert response.status_code == 422
 
 
 def test_run_endpoint_rejects_too_long_input() -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        TestClient(app_module.app) as client,
-    ):
+    with TestClient(app_module.app) as client:
         response = client.post("/run", json={"input": "x" * 501})
 
     assert response.status_code == 422
 
 
 def test_run_endpoint_returns_502_on_pipeline_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    with (
-        patch.object(app_module, "init_mcp", new_callable=AsyncMock),
-        patch.object(app_module, "close_mcp", new_callable=AsyncMock),
-        _make_client(monkeypatch, _ExplodingGraph()) as client,
-    ):
+    with _make_client(monkeypatch, _ExplodingGraph()) as client:
         response = client.post("/run", json={"input": "Research Arbitrum"})
 
     assert response.status_code == 502

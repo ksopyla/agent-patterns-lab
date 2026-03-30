@@ -1,4 +1,9 @@
-"""FastAPI application exposing the full Team 1 intelligence pipeline with MCP tools."""
+"""FastAPI application exposing the crypto intelligence pipeline via REST.
+
+This is the Software 2.0 entry point (POST /run). The Software 3.0 entry point
+is the MCP server in src/mcp_servers/crypto_intelligence.py, which exposes
+the same pipeline as an MCP tool that any AI client can call.
+"""
 
 from __future__ import annotations
 
@@ -13,25 +18,22 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from src.agents.graph import build_graph
-from src.mcp_setup import close_mcp, init_mcp
 
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     setup_tracing()
-    await init_mcp()
     fastapi_app.state.graph = build_graph()
-    verbose_log("System", "FastAPI application started with MCP connections")
+    verbose_log("System", "FastAPI application started")
     yield
-    await close_mcp()
     verbose_log("System", "FastAPI application shutting down")
 
 
 app = FastAPI(
     title="Pattern 02: MCP Tool Integration",
     description=(
-        "Full Team 1 intelligence pipeline (5 agents) with MCP-based tool access: "
-        "crypto-intelligence MCP (CoinGecko) and Brave Search MCP (web search)."
+        "Crypto intelligence pipeline (5 agents). REST entry point at POST /run. "
+        "MCP entry point at the crypto-intelligence MCP server (:8001)."
     ),
     version="0.1.0",
     lifespan=lifespan,

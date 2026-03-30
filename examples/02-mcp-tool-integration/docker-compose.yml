@@ -12,11 +12,8 @@ services:
       - "8001:8000"
     env_file:
       - ../../.env
-    healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/sse').raise_for_status()"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+    environment:
+      - VERBOSE=${VERBOSE:-true}
 
   agent:
     build:
@@ -32,10 +29,6 @@ services:
       - ../../.env
     environment:
       - VERBOSE=${VERBOSE:-true}
-      - CRYPTO_INTELLIGENCE_MCP_URL=http://crypto-intelligence-mcp:8000/sse
-    depends_on:
-      crypto-intelligence-mcp:
-        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
       interval: 10s
