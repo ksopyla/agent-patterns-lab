@@ -25,6 +25,16 @@ Automatically maintained by continual learning. Do not edit manually.
 - Monorepo: multiple `src/` packages exist across examples -- tools like mypy must run per-directory to avoid duplicate module conflicts
 - CI commands in `.github/workflows/ci.yml` must use the same wrapper scripts as local dev (single source of truth)
 
+## Pattern 02 Architecture Decisions
+
+- Graph uses parallel fan-out / fan-in: `research_planner → [news_scanner | project_profiler | community_analyst] → intelligence_compiler`
+- `research_planner` is the orchestrator: extracts `project_name` and `coin_ticker` into state so downstream nodes never receive raw user input for external API calls
+- Data source ownership: `project_profiler` owns ALL CoinGecko data (market stats, price, developer_data); `news_scanner` owns news web search; `community_analyst` owns social sentiment web search (site: restrictions)
+- `community_analyst` does NOT call CoinGecko -- eliminated prior duplication with `project_profiler`
+- External API calls (CoinGecko) use retry with exponential backoff (3 attempts)
+- Search nodes fire multiple targeted queries and deduplicate results by URL before passing to LLM
+- No `_normalize_query` regex -- LLM extraction in research_planner replaced brittle regex parsing
+
 ## Rules vs Skills Architecture
 
 Rules (always-applied, minimal context):
