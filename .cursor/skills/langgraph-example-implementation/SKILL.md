@@ -45,7 +45,9 @@ Do not use it to:
 - Use `verbose_log()` in meaningful places
 - Keep one shared `LANGSMITH_PROJECT` across the repo and differentiate examples with run tags and metadata, not extra per-example env vars
 - For public graph entrypoints, pass a `build_langsmith_run_config(...)` result into `invoke()` or `ainvoke()`
+- Prefer one small shared runtime helper when multiple transport adapters need the same timeout or LangSmith run config
 - Use FastAPI `lifespan` instead of startup/shutdown decorators
+- Avoid module-level side effects in transport modules; initialize tracing, graphs, and clients in lifespan or explicit lazy helpers
 - Expose `/health` returning `{"status": "ok"}`
 - Keep modules focused and easy to test in isolation
 
@@ -94,6 +96,7 @@ class AgentState(TypedDict, total=False):
 Guidance:
 - Use `Required[...]` for fields the entrypoint must provide
 - Keep field names business-oriented and easy to inspect in traces
+- Prefer typed fields for machine-consumed downstream data such as generated query lists instead of encoding them into free-text blobs
 - Do not overload state with framework-specific objects unless necessary
 - Keep internal graph state separate from public API schemas when those concerns differ
 
@@ -134,9 +137,11 @@ async def agent_node(state: AgentState) -> dict[str, str]:
 Guidance:
 - Keep one clear responsibility per node
 - Return only the state updates produced by that node
+- Prefer structured LLM output when downstream nodes need deterministic machine-readable fields
 - If the node uses tools, log both the action and a concise outcome
 - Catch provider/tool failures only when graceful degradation is part of the example goal
 - Keep prompts, parsing, and tool orchestration inside the node or its helper module, not in FastAPI handlers
+- When two nodes share the same mechanics but differ in prompts or fallback queries, extract the shared mechanics into a helper module and keep the node-specific reasoning local
 
 ## Graph Template
 
@@ -232,12 +237,14 @@ Guidance:
 - Keep LangSmith project selection simple: reuse the repo-wide `LANGSMITH_PROJECT` and rely on tags plus metadata for per-example filtering
 - Include stable tags such as `example:...`, `pattern:...`, `env:...`, `runtime:...`, and `provider:...`
 - Add structured error handling when the pattern needs resilience or external dependencies
+- Add an explicit timeout boundary for public HTTP or MCP entrypoints that call external providers
 - Keep endpoint handlers thin; they should validate, call the graph or service layer, and map output
 
 ## Protocol-Specific Notes
 
 - For direct tools, keep setup inside the node or helper module that owns the capability.
-- For MCP-based tools, isolate client or connection lifecycle in a dedicated module and prefer explicit typed schemas for exposed workflows.
+- For MCP-based tools, isolate client or connection lifecycle in a dedicated module, avoid import-time initialization, and prefer explicit typed schemas for exposed workflows.
+- When REST and MCP expose the same workflow, keep shared execution config in one place and document any intentional response-shape asymmetry.
 - For A2A-compatible agents, keep message-based state with a `messages` key and isolate transport-specific request or response handling at the boundary.
 - Add streaming only when the example is explicitly about streaming or the UX needs incremental progress.
 - Use compose `command:` overrides to run extra services from the same image when only the entrypoint changes.

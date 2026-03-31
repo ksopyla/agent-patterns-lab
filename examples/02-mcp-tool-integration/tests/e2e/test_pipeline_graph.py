@@ -17,13 +17,15 @@ from src.agents import graph as graph_module
 async def test_graph_executes_all_five_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
     call_order: list[str] = []
 
-    async def fake_research_planner(state: dict[str, str]) -> dict[str, str]:
+    async def fake_research_planner(state: dict[str, str]) -> dict[str, str | list[str]]:
         call_order.append("research_planner")
         assert state["input"] == "Research Arbitrum"
         return {
-            "plan": "NEWS_QUERIES:\n- Arbitrum news\nCOMMUNITY_QUERIES:\n- Arbitrum reddit",
+            "plan": "1. News\n2. Profile\n3. Community",
             "project_name": "Arbitrum",
             "coin_ticker": "ARB",
+            "news_queries": ["Arbitrum news"],
+            "community_queries": ["Arbitrum reddit"],
         }
 
     async def fake_news_scanner(state: dict[str, str]) -> dict[str, str]:

@@ -1,24 +1,24 @@
 """Community Analyst agent -- analyzes social media sentiment and community activity.
 
-Reads:  state["project_name"], state["coin_ticker"], state["plan"]
+Reads:  state["project_name"], state["coin_ticker"], state["community_queries"]
 Writes: state["community"]
 
 Uses DuckDuckGo with site-restricted queries (reddit.com, twitter/X keywords)
 to gauge community sentiment. Does NOT call CoinGecko -- that data source is
-owned exclusively by project_profiler.
+owned exclusively by project_profiler. Shared search mechanics live in
+src.agents.web_search.
 """
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 
 from agent_common.llm import get_chat_model
 from agent_common.tracing import verbose_log
-from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import AgentState
+from src.agents.web_search import format_search_results, run_search_queries
 
 SYSTEM_PROMPT = """\
 You are a crypto community and sentiment analyst. You receive web search results \
@@ -37,29 +37,10 @@ End with a Community Health Rating: Strong / Moderate / Weak — with a one-sent
 justification. If data is insufficient, rate as "Insufficient Data" and explain why."""
 
 
-def _extract_plan_queries(plan: str) -> list[str]:
-    """Pull queries from the COMMUNITY_QUERIES: section of the research plan."""
-    match = re.search(
-        r"COMMUNITY_QUERIES:\s*\n(.*?)(?:\n\s*\n|\Z)",
-        plan,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if not match:
-        return []
-    lines = match.group(1).strip().splitlines()
-    queries: list[str] = []
-    for line in lines:
-        cleaned = re.sub(r"^[\s\-\d.*•]+", "", line).strip().strip('"').strip("'")
-        if cleaned:
-            queries.append(cleaned)
-    return queries
-
-
-def _build_queries(project_name: str, ticker: str, plan: str) -> list[str]:
-    """Build social-focused search queries from plan and fallback templates."""
-    plan_queries = _extract_plan_queries(plan)
-    if plan_queries:
-        return plan_queries[:4]
+def _build_queries(project_name: str, ticker: str, community_queries: list[str]) -> list[str]:
+    """Build social-focused queries from planner output and fallback templates."""
+    if community_queries:
+        return community_queries[:4]
 
     current_year = datetime.now(UTC).year
     return [
@@ -69,52 +50,20 @@ def _build_queries(project_name: str, ticker: str, plan: str) -> list[str]:
     ]
 
 
-def _deduplicate_results(all_results: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Remove duplicate search results by URL."""
-    seen_urls: set[str] = set()
-    unique: list[dict[str, str]] = []
-    for item in all_results:
-        url = item.get("link", "")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            unique.append(item)
-    return unique
-
-
 async def community_analyst_node(state: AgentState) -> dict[str, str]:
     """Analyze community sentiment using social-focused web searches."""
     project_name = state.get("project_name", state["input"])
     ticker = state.get("coin_ticker", "")
-    plan = state.get("plan", "")
+    community_queries = state.get("community_queries", [])
     verbose_log("CommunityAnalyst", f"Analyzing community for: {project_name} ({ticker})")
 
-    queries = _build_queries(project_name, ticker, plan)
+    queries = _build_queries(project_name, ticker, community_queries)
     verbose_log("CommunityAnalyst", f"Running {len(queries)} social search queries")
 
-    all_results: list[dict[str, str]] = []
-    search = DuckDuckGoSearchResults(
-        max_results=5,  # type: ignore[call-arg]
-        output_format="list",
-    )
-
-    for query in queries:
-        try:
-            raw = await search.ainvoke(query)
-            if isinstance(raw, list):
-                all_results.extend(raw)
-                verbose_log("CommunityAnalyst", f"  [{query[:50]}] → {len(raw)} results")
-        except Exception as exc:
-            verbose_log("CommunityAnalyst", f"  [{query[:50]}] search failed: {exc}")
-
-    unique_results = _deduplicate_results(all_results)
-    verbose_log(
-        "CommunityAnalyst",
-        f"Total: {len(all_results)} raw → {len(unique_results)} unique results",
-    )
-
-    results_text = (
-        "\n".join(f"- [{r.get('title', 'N/A')}]({r.get('link', '')}): {r.get('snippet', '')}" for r in unique_results)
-        or "[No social media results found]"
+    search_results = await run_search_queries(queries, "CommunityAnalyst")
+    results_text = format_search_results(
+        search_results,
+        empty_message="[No social media results found]",
     )
 
     try:

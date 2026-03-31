@@ -4,7 +4,8 @@ Data flow:
   research_planner → [news_scanner, project_profiler, community_analyst] (parallel)
                    → intelligence_compiler
 
-research_planner populates: plan, project_name, coin_ticker
+research_planner populates: plan, project_name, coin_ticker, news_queries,
+                            community_queries
 news_scanner populates:     news
 project_profiler populates: profile
 community_analyst populates: community
@@ -23,6 +24,8 @@ class AgentState(TypedDict, total=False):
     plan: str
     project_name: str
     coin_ticker: str
+    news_queries: list[str]
+    community_queries: list[str]
 
     # Parallel research branch outputs
     news: str

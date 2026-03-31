@@ -36,7 +36,7 @@ The MCP entry point is at `localhost:8001/sse` -- connect Claude Code, Cursor, o
 
 ## What You Get Back
 
-Both entry points (REST and MCP) run the same 5-agent pipeline and return the same intelligence report:
+Both entry points (REST and MCP) run the same 5-agent pipeline and produce the same final intelligence report. The REST API returns the full intermediate artifact set for debugging, while the MCP tool returns the final `report` only because MCP tools should expose outcomes rather than internal pipeline state:
 
 ```json
 {
@@ -48,7 +48,7 @@ Both entry points (REST and MCP) run the same 5-agent pipeline and return the sa
 }
 ```
 
-Via MCP, Claude Desktop receives the `report` field directly -- a complete analysis in one tool call.
+Via MCP, Claude Desktop receives the `report` field directly -- a complete analysis in one tool call. This asymmetry is intentional: REST is optimized for developer inspection, MCP is optimized for outcome-oriented tool use.
 
 ## At a Glance
 
@@ -63,6 +63,7 @@ Via MCP, Claude Desktop receives the `report` field directly -- a complete analy
 | Data sources | News Scanner: DuckDuckGo · Project Profiler: CoinGecko API · Community Analyst: DuckDuckGo (site-restricted) |
 | Runtime | Agent container (FastAPI) + MCP server container (same image, different command) |
 | Input validation | `input` must be 3-500 characters (REST); `query` is free-text (MCP) |
+| Timeout behavior | Both entry points execute synchronously with a 120s timeout boundary |
 | Observability | `VERBOSE=true` logs to stderr; hosted LangSmith tracing when `LANGSMITH_API_KEY` is set |
 
 ## The Problem
@@ -104,6 +105,7 @@ The MCP server and REST API share the same Docker image but run as **separate co
 - **Parallel fan-out/fan-in** -- three research nodes run concurrently via LangGraph `add_edge`; compiler waits for all three
 - **Data source ownership** -- each node owns one external source (DuckDuckGo or CoinGecko), no duplication
 - **Graceful degradation** -- CoinGecko retry with backoff; search and LLM failures produce partial output, not crashes
+- **Synchronous execution boundary** -- REST and MCP both wait for the full pipeline result and fail fast after 120 seconds instead of hanging indefinitely
 
 ## Implementation Walkthrough
 
@@ -197,7 +199,11 @@ uv run python scripts/linting/run_mypy.py
 | Parallel execution cuts wall-clock time vs. sequential | Three concurrent DuckDuckGo/CoinGecko calls may hit rate limits faster |
 | Claude Desktop is the "UI" -- no custom frontend | Streaming partial results is not supported (Pattern 06 adds this) |
 | Same graph, two entry points -- no code duplication | Two containers for the same image |
+| REST exposes intermediate artifacts for debugging; MCP exposes only the final report | Entry points are intentionally asymmetric, so clients see different response shapes |
 | Internal data sources are hidden from clients | CoinGecko rate limits apply (30 req/min free tier; retry with backoff mitigates) |
+| Timeout prevents hung requests from running forever | Background jobs / `202 Accepted` polling are not implemented in this pattern to keep focus on MCP integration |
+
+Both entry points currently execute the pipeline synchronously. In a production system with longer-running research, a background-task or job-queue design such as `POST /run -> 202 Accepted -> GET /tasks/{id}` would be reasonable, but that extra lifecycle machinery would distract from the MCP lesson here.
 
 This last limitation -- every request starts from scratch -- is the reason [Pattern 03](../03-persistent-memory/README.md) exists.
 
