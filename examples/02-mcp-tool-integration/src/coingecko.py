@@ -26,27 +26,30 @@ async def _get(path: str, params: dict[str, str] | None = None) -> dict:  # type
     url = f"{COINGECKO_BASE}{path}"
     last_exc: Exception | None = None
 
-    for attempt in range(_MAX_RETRIES):
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for attempt in range(_MAX_RETRIES):
+            try:
                 resp = await client.get(url, params=params or {})
                 resp.raise_for_status()
                 return resp.json()  # type: ignore[no-any-return]
-        except (httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout) as exc:
-            last_exc = exc
-            is_client_error = (
-                isinstance(exc, httpx.HTTPStatusError)
-                and exc.response.status_code < 500
-                and exc.response.status_code != 429
-            )
-            if is_client_error:
-                raise
-            delay = _BASE_DELAY * (2**attempt)
-            verbose_log(
-                "CoinGecko",
-                f"Request to {path} failed (attempt {attempt + 1}/{_MAX_RETRIES}): {exc!r} — retrying in {delay:.1f}s",
-            )
-            await asyncio.sleep(delay)
+            except (httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout) as exc:
+                last_exc = exc
+                is_client_error = (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code < 500
+                    and exc.response.status_code != 429
+                )
+                if is_client_error:
+                    raise
+                delay = _BASE_DELAY * (2**attempt)
+                verbose_log(
+                    "CoinGecko",
+                    (
+                        f"Request to {path} failed (attempt {attempt + 1}/{_MAX_RETRIES}): "
+                        f"{exc!r} — retrying in {delay:.1f}s"
+                    ),
+                )
+                await asyncio.sleep(delay)
 
     assert last_exc is not None
     raise last_exc

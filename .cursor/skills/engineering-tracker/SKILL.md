@@ -10,7 +10,7 @@ description: >-
 
 ## Purpose
 
-Maintain a living record of the project's evolution in `docs/CHANGELOG.md`. This serves as:
+Maintain a living record of the project's evolution in `CHANGELOG.md` (root of the repository). This serves as:
 - A learning journal for the author
 - A reference for blog post writing
 - A history of architectural decisions

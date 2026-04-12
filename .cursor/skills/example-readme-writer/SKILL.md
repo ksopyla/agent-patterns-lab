@@ -48,7 +48,7 @@ Use this order by default for example READMEs:
 ```markdown
 # Pattern NN: [Title]
 
-> One-sentence value proposition.
+> One-sentence value proposition -- mention the key pattern(s) introduced.
 
 Short positioning paragraph:
 - where this pattern fits in the series
@@ -57,58 +57,85 @@ Short positioning paragraph:
 
 ## Quick Start
 
-Show the fastest runnable path first.
+Fastest runnable path: .env setup, docker compose, curl. Include the
+verification request here so there's no need for a separate Verification section.
 
 ## What You Get Back
 
-Show the response shape, output artifact, or visible success criteria.
+Response shape or visible success criteria.
 
 ## At a Glance
 
-Compact table: agents, runtime, ports, endpoints, prerequisites, observability.
+Compact table: agents, graph topology, runtime, ports, data sources, observability.
 
 ## The Problem
 
-What breaks in the simpler approach? Why does this pattern exist?
+2-4 sentences. State the limitation(s) of the previous pattern. No comparison
+tables unless the comparison genuinely adds value that prose cannot.
 
 ## Architecture
 
-Use Mermaid when the topology or flow is not obvious. This is the important part, we are focusing on the architecture and flow not the code.
-
-
+Mermaid diagram + a paragraph explaining WHY it's structured this way (e.g. why
+two containers, why parallel), not just describing what exists.
 
 ## Key Concepts
 
-Short bullets only. Keep the deep explanation lower in the doc.
+4 bullets max, one line each, em-dashes not colons. If it reads like AI marketing
+copy, rewrite it shorter.
 
 ## Implementation Walkthrough
 
-Explain the important code in steps, with annotated snippets.
-Do not explain the code that is not part of the example, just present the main idea and flow.
+Link to source files so the reader can jump directly. Show code only when it's
+the actual working snippet that teaches the architecture (e.g. the MCP tool
+definition). For everything else, reference the file and explain the idea in
+prose. Never show pseudo-code or comment-only code blocks.
 
-## What You Should See
+## Connect Your MCP Client / Integration
+(if applicable -- combine all client tools into one section, CLI first, GUI last)
 
-Expected logs, traces, response shape, or runtime behavior.
+## Local Development
 
-## Verification
+uv sync, test, lint commands.
 
-One or two concrete requests plus expected success and failure behavior.
+## Exercises
 
+2 items max. One simple extension, one architectural extension. One sentence each.
+
+## Trade-offs
+
+Table of advantages vs. limitations. End with the bridge to the next pattern.
+
+## Further Reading
+
+Only link docs for technologies introduced in this pattern.
 ```
 
-You may merge `What You Get Back` and `At a Glance` when the example is very small, but do not move `Quick Start` far down the page unless the user explicitly wants a tutorial-first flow.
+**Sections to skip:**
+
+- **What You Should See** -- skip if Quick Start already shows expected output
+- **Verification** -- never duplicate Quick Start with the same curl commands
 
 ## README Quality Rules
 
-- **GitHub-first**: treat the README like a landing page first and a reference document second.
+- **GitHub-first**: treat the README like a landing page, not a reference manual.
 - **Self-contained**: a developer should understand the pattern without opening five other files.
 - **Use case consistency**: keep the crypto intelligence platform story and team evolution intact.
 - **Progressive narrative**: explain what limitation motivates the next pattern.
 - **Code-to-doc fidelity**: verify names, ports, env vars, response fields, validation, failure modes, and Docker UX against the implementation.
 - **No time bombs**: avoid hardcoded years or other values that drift over time unless the code also hardcodes them.
-- **No duplication**: do not explain the same concept twice at two different depths unless the second time adds new information.
-- **Show payoff early**: include an output example, trace snippet, or success criteria near the top half of the page.
-- **Keep code snippets selective**: show the parts that teach the architecture; do not dump full files.
+- **Say it once**: if a concept appears in Quick Start, don't repeat it in a Verification section. Every section must add information that no other section covers.
+- **Show payoff early**: include an output example or success criteria near the top half of the page.
+
+## Writing Style Rules
+
+- **Reference files, don't duplicate code**: link to source files (`[file.py](path)`) so readers can jump directly. Only inline a code snippet when it's the actual working code and it teaches the architecture. Never show pseudo-code, comment-only blocks, or partial extracts that don't compile.
+- **Architecture explanation helps, not just describes**: when mentioning infrastructure (containers, ports, networks), explain WHY it's structured that way, not just WHAT exists.
+- **Key Concepts are tight**: 4 bullets max. One line each with em-dash separators. Cut any bullet that restates the architecture diagram.
+- **The Problem is concise**: 2-4 sentences stating the limitation. No comparison tables unless truly needed.
+- **Exercises are short**: 2 items max. One sentence each. One simple extension, one architectural.
+- **Further Reading is scoped**: only link docs for technologies introduced by this specific pattern.
+- **Integration guides are combined**: don't split Claude Code / Cursor / Claude Desktop into separate sections. One section, multiple examples, developer-workflow order (CLI tools first, GUI apps last).
+- **No AI tone**: avoid marketing-speak, over-explanation, and restating the obvious. If a sentence doesn't add information, delete it.
 
 ## Fidelity Checklist
 

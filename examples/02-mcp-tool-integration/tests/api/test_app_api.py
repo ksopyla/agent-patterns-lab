@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,6 +36,16 @@ class _ExplodingGraph:
         raise RuntimeError("LLM provider unreachable")
 
 
+class _SlowGraph:
+    async def ainvoke(
+        self,
+        payload: dict[str, str],
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        await asyncio.sleep(0.05)
+        return {"report": "late"}
+
+
 def _make_client(monkeypatch: pytest.MonkeyPatch, graph: object) -> TestClient:
     """Create a TestClient with a pre-injected graph on app.state."""
     monkeypatch.setattr(app_module, "build_graph", lambda: graph)
@@ -61,7 +72,7 @@ def test_run_endpoint_executes_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(
         app_module,
-        "_pipeline_run_config",
+        "build_pipeline_run_config",
         lambda: {"run_name": "test-run", "tags": ["example:02-mcp-tool-integration"]},
     )
 
@@ -116,3 +127,15 @@ def test_run_endpoint_returns_502_on_pipeline_failure(monkeypatch: pytest.Monkey
     data = response.json()
     assert data["error"] == "pipeline_failed"
     assert "LLM provider unreachable" in data["detail"]
+
+
+def test_run_endpoint_returns_504_on_pipeline_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(app_module, "PIPELINE_TIMEOUT_SECONDS", 0.01)
+
+    with _make_client(monkeypatch, _SlowGraph()) as client:
+        response = client.post("/run", json={"input": "Research Arbitrum"})
+
+    assert response.status_code == 504
+    data = response.json()
+    assert data["error"] == "pipeline_timeout"
+    assert "timed out" in data["detail"]

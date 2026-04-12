@@ -10,21 +10,51 @@ Run standalone: python -m src.mcp_servers.crypto_intelligence
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
+
 from agent_common.tracing import setup_tracing, verbose_log
 from mcp.server.fastmcp import FastMCP
 
 from src.agents.graph import build_graph
-
-setup_tracing()
+from src.runtime import PIPELINE_TIMEOUT_SECONDS, build_pipeline_run_config
 
 mcp = FastMCP(
     "crypto-intelligence",
     host="0.0.0.0",
     port=8000,
 )
-app = mcp.sse_app()
+_graph: Any | None = None
+_tracing_initialized = False
 
-_graph = build_graph()
+
+def _ensure_runtime_initialized() -> Any:
+    """Initialize tracing and graph lazily for the MCP server."""
+    global _graph, _tracing_initialized
+
+    if not _tracing_initialized:
+        setup_tracing()
+        _tracing_initialized = True
+
+    if _graph is None:
+        _graph = build_graph()
+        verbose_log("MCP", "MCP server runtime initialized")
+
+    return _graph
+
+
+@asynccontextmanager
+async def mcp_lifespan(_: object) -> AsyncIterator[None]:
+    _ensure_runtime_initialized()
+    verbose_log("MCP", "MCP server started")
+    yield
+    verbose_log("MCP", "MCP server shutting down")
+
+
+app = mcp.sse_app()
+app.router.lifespan_context = mcp_lifespan
 
 
 @mcp.tool()
@@ -47,13 +77,28 @@ async def research_crypto_project(query: str) -> str:
         A structured intelligence report with executive summary, market snapshot,
         key findings, recent developments, community health, risk factors, and outlook.
     """
-    verbose_log("MCP", f"research_crypto_project({query!r:.80}) -- starting pipeline")
+    graph = _ensure_runtime_initialized()
+    preview = repr(query[:80])
+    verbose_log("MCP", f"research_crypto_project({preview}) -- starting pipeline")
 
-    result = await _graph.ainvoke({"input": query})
+    try:
+        result = await asyncio.wait_for(
+            graph.ainvoke(
+                {"input": query},
+                config=build_pipeline_run_config(),
+            ),
+            timeout=PIPELINE_TIMEOUT_SECONDS,
+        )
+    except TimeoutError:
+        message = f"Pipeline timed out after {PIPELINE_TIMEOUT_SECONDS:.0f}s"
+        verbose_log("MCP", message)
+        return f"[Pipeline timeout] {message}"
+    except Exception as exc:
+        verbose_log("MCP", f"research_crypto_project failed: {exc}")
+        return f"[Pipeline failed] {type(exc).__name__}: {exc}"
 
     report: str = result.get("report", "")
     verbose_log("MCP", f"research_crypto_project -- complete ({len(report)} chars)")
-
     return report
 
 
