@@ -52,7 +52,7 @@ Teams that emerge as complexity demands them:
 ### Act 1 &mdash; One Team, Growing Capabilities
 <sup>Patterns 01-04</sup>
 
-You are **Team 1: Intelligence**. Three agents research crypto projects inside a single LangGraph pipeline. It works -- until you realize tools are hardcoded, every request starts from scratch, and memory grows unbounded. Each limitation drives the next pattern: MCP for standardized tools, PostgreSQL-backed checkpointers for persistence, a Memory Refiner for lifecycle management.
+You are **Team 1: Intelligence**. Three agents research crypto projects inside a single LangGraph pipeline. It works -- until you realize tools are hardcoded, long-running workflows are fragile, and the agent forgets what users cared about across sessions. Each limitation drives the next pattern: MCP for standardized tools, PostgreSQL-backed checkpoint recovery for resilience, and real long-term memory for user and project knowledge.
 
 ### Act 2 &mdash; Teams Multiply, Protocols Emerge
 <sup>Patterns 05-06</sup>
@@ -93,15 +93,15 @@ Team 2 moves to an external partner. Implicit trust is gone -- JWT authenticatio
 </tr>
 <tr>
 <td>03</td>
-<td><a href="examples/03-persistent-memory/">Persistent Memory</a></td>
-<td>Remembering across conversations</td>
-<td>Checkpointer, PostgreSQL, thread management</td>
+<td><a href="examples/03-checkpoint-recovery/">Checkpoint Recovery</a></td>
+<td>Recovering long-running workflows without restarting from scratch</td>
+<td>PostgresSaver, thread_id, interrupts, resume semantics</td>
 </tr>
 <tr>
 <td>04</td>
-<td><a href="examples/04-memory-lifecycle/">Memory Lifecycle</a> <sup>optional</sup></td>
-<td>Managing growing knowledge bases</td>
-<td>Memory refiner, fact TTL, hierarchical memory</td>
+<td><a href="examples/04-agent-memory/">Agent Memory</a></td>
+<td>Remembering user interests and prior research across sessions</td>
+<td>PostgresStore, Honcho, user preferences, incremental research</td>
 </tr>
 <tr><td colspan="4"><strong>Distribution Tier</strong> · Multi-service, multi-team, real distributed systems</td></tr>
 <tr>
@@ -144,9 +144,9 @@ Every pattern exists because the previous one creates a real limitation:
 
 ```
 P01 ─── Hardcoded tools can't be shared ──────────────── P02
-P02 ─── Every request starts from scratch ────────────── P03
-P03 ─┬─ Memory grows unbounded ──────────────────────── P04 (optional)
-     └─ A second team arrives, can't import their code ─ P05
+P02 ─── Long runs fail and lose completed work ──────── P03
+P03 ─── Resilient threads still forget across sessions ─ P04
+P04 ─── A second team arrives, can't import their code ─ P05
 P05 ─── Third team needs both, sequential is too slow ── P06
 P06 ─── Team 2 moves to external partner, no trust ──── P07
 P07 ─── New agents appear, consumers need code changes ─ P08
