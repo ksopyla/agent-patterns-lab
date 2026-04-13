@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented here.
 
+## [2026-04-13] Pattern 03: Checkpoint Recovery and Resilience
+
+### Added
+- PostgreSQL-backed checkpointer via `agent_common.persistence` (shared `create_postgres_pool`, `setup_checkpointer`, `close_checkpointer`)
+- Project Verifier and Project Selector nodes -- CoinGecko match validation with `interrupt()` for ambiguous results
+- `POST /run/resume` REST endpoint for human-in-the-loop resume after interrupt
+- MCP tools: `get_research_status`, `list_research_threads`, `delete_research_thread` for thread inspection
+- Service layer (`src/service.py`) separating retry-after-failure from resume-after-interrupt semantics
+- Docker Compose with PostgreSQL container and health checks
+- Full test suite: checkpoint recovery e2e, interrupt/resume e2e, MCP tool unit tests, API tests
+
+### Changed
+- Graph extends P02 fan-out/fan-in with verifier → selector before parallel branches
+- `libs/common`: added `postgres_uri` to Settings, new `persistence` module, updated `__init__.py` exports
+- Pattern progression revised: P03 renamed from "Persistent Memory" to "Checkpoint Recovery", P04 from "Memory Lifecycle" to "Agent Memory" (now on main path)
+- P01 and P02 READMEs streamlined with walkthrough structure and "What You Have Learned" takeaways
+- README skill template updated with new section conventions
+
+### Architecture Decisions
+- **Checkpointing is resilience, not memory**: `thread_id` resumes a failed or interrupted workflow but does not create cross-session knowledge -- that is P04's concern
+- **Verifier + selector over silent best-guess**: ambiguous CoinGecko matches become explicit `interrupt()` calls, keeping the human in the loop rather than silently choosing the wrong coin
+- **Thread status derived from checkpoints**: MCP tools inspect LangGraph state directly instead of maintaining a parallel status table
+- **Two entry points, one service layer**: REST and MCP both delegate to `service.run_pipeline` / `service.resume_pipeline`, keeping execution semantics in one place
+
+### Dependencies
+- langgraph-checkpoint-postgres (PostgreSQL checkpointer)
+- psycopg[binary,pool] (async PostgreSQL driver with connection pooling)
+
+---
+
 ## [2026-03-30] Pattern 02: MCP Tool Integration -- Architecture Redesign
 
 ### Added

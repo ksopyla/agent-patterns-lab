@@ -57,8 +57,9 @@ Short positioning paragraph:
 
 ## Quick Start
 
-Fastest runnable path: .env setup, docker compose, curl. Include the
-verification request here so there's no need for a separate Verification section.
+Fastest runnable path: .env setup, docker compose, curl. Include the main
+health and success path here, and mention `endpoints.http` when prebuilt
+requests already exist.
 
 ## What You Get Back
 
@@ -85,10 +86,16 @@ copy, rewrite it shorter.
 
 ## Implementation Walkthrough
 
-Link to source files so the reader can jump directly. Show code only when it's
-the actual working snippet that teaches the architecture (e.g. the MCP tool
-definition). For everything else, reference the file and explain the idea in
-prose. Never show pseudo-code or comment-only code blocks.
+Use numbered steps so the flow is easy to follow:
+1. define the shared state
+2. define the nodes
+3. wire the graph / runtime
+4. expose the public entry points
+
+Link to source files so the reader can jump directly. Prefer short prose plus
+file references over long code excerpts. Inline code only when it teaches the
+architecture and the real working snippet is genuinely more helpful than prose.
+Never show pseudo-code or comment-only code blocks.
 
 ## Connect Your MCP Client / Integration
 (if applicable -- combine all client tools into one section, CLI first, GUI last)
@@ -97,13 +104,11 @@ prose. Never show pseudo-code or comment-only code blocks.
 
 uv sync, test, lint commands.
 
-## Exercises
+## What You Have Learned
 
-2 items max. One simple extension, one architectural extension. One sentence each.
-
-## Trade-offs
-
-Table of advantages vs. limitations. End with the bridge to the next pattern.
+Short takeaway bullets, then:
+- bridge to the next pattern with one sentence explaining what it adds
+- call to action to star the GitHub repository
 
 ## Further Reading
 
@@ -112,8 +117,13 @@ Only link docs for technologies introduced in this pattern.
 
 **Sections to skip:**
 
-- **What You Should See** -- skip if Quick Start already shows expected output
+- **When to Use / When Not to Use** -- skip unless the pattern needs a short,
+  non-obvious note that materially helps the reader choose the pattern
+- **What You Should See** -- skip; console and Docker logs add noise unless they
+  teach something essential
 - **Verification** -- never duplicate Quick Start with the same curl commands
+- **Exercises** -- skip for example READMEs in this repo
+- **Trade-offs** -- replace with `What You Have Learned`
 
 ## README Quality Rules
 
@@ -132,7 +142,10 @@ Only link docs for technologies introduced in this pattern.
 - **Architecture explanation helps, not just describes**: when mentioning infrastructure (containers, ports, networks), explain WHY it's structured that way, not just WHAT exists.
 - **Key Concepts are tight**: 4 bullets max. One line each with em-dash separators. Cut any bullet that restates the architecture diagram.
 - **The Problem is concise**: 2-4 sentences stating the limitation. No comparison tables unless truly needed.
-- **Exercises are short**: 2 items max. One sentence each. One simple extension, one architectural.
+- **Implementation Walkthrough stays structural**: prefer numbered steps and file references over detailed tutorial prose. The goal is to show how things fit together, not restate the code line by line.
+- **Quick Start does the heavy lifting**: put the runnable path there and point to `endpoints.http` instead of adding a separate verification section.
+- **MCP setup stays practical**: if the example exposes MCP, include Claude Code, Cursor, and Claude Desktop setup in one section.
+- **End strong**: use `What You Have Learned` for takeaways, then bridge to the next pattern and add the GitHub star CTA.
 - **Further Reading is scoped**: only link docs for technologies introduced by this specific pattern.
 - **Integration guides are combined**: don't split Claude Code / Cursor / Claude Desktop into separate sections. One section, multiple examples, developer-workflow order (CLI tools first, GUI apps last).
 - **No AI tone**: avoid marketing-speak, over-explanation, and restating the obvious. If a sentence doesn't add information, delete it.
@@ -141,6 +154,7 @@ Only link docs for technologies introduced in this pattern.
 
 Before finalizing an example README, verify:
 - the documented quick start matches the actual `docker compose` flow
+- `endpoints.http` is mentioned when it exists and is useful
 - repo-root `.env` dependencies are stated explicitly when present
 - optional shortcuts are labeled as optional
 - provider selection instructions match shared config defaults

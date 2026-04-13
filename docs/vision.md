@@ -53,13 +53,13 @@ But the News Scanner's web search is a hardcoded Python function call. What if y
 
 **Pattern 02** introduces MCP -- but not the way you might expect. Instead of wrapping raw APIs as MCP tools, you expose the agent pipeline itself. A `crypto-intelligence` MCP server wraps the full 5-agent research pipeline as a single `research_crypto_project` tool. Claude Desktop calls one MCP tool and gets a complete intelligence report -- the internal orchestration (five agents, CoinGecko data, DuckDuckGo search) is hidden behind the protocol. This is the real Software 3.0 lesson: expose capabilities, not plumbing. The team expands to five agents, the architecture moves to multi-container Docker Compose, and the agent now has two entry points -- REST (`POST /run`) and MCP -- serving the same graph.
 
-Now the team works well, but every request starts from scratch. You researched Arbitrum yesterday -- why are you re-scanning the same news today?
+Now the team works well, but it's fragile. A single CoinGecko timeout or container restart can waste 30 seconds of completed work because the whole pipeline must start over.
 
-**Pattern 03** adds persistent memory. LangGraph's checkpointer, backed by PostgreSQL, remembers previous research sessions. When you ask about Arbitrum again, the system provides incremental updates, not a full repeat. Each project becomes a "thread" with accumulated knowledge.
+**Pattern 03** adds checkpoint recovery and resilience. LangGraph's checkpointer, backed by PostgreSQL, persists execution state after each node. If one branch fails, you resume from the last successful checkpoint instead of replaying the whole graph. This is also the first place where human-in-the-loop becomes natural: if the planner finds multiple plausible CoinGecko matches for a project name, it can pause with an interrupt and resume once the user clarifies.
 
-Memory grows. After 50 research sessions, the knowledge base is bloated with stale price data, outdated news, and redundant facts.
+The system is now durable, but still amnesiac. Resume after failure is not the same as remembering what the user cared about last week.
 
-**Pattern 04** (optional enrichment) introduces memory lifecycle management. A Memory Refiner agent consolidates knowledge, expires stale facts (price data after 1 hour, news after 7 days), and organizes memory into tiers: working memory for the current conversation, episodic memory for past sessions, semantic memory for durable knowledge.
+**Pattern 04** adds real agent memory. Long-term knowledge moves into a store: tracked projects, user preferences, previous summaries, and open questions. Honcho or a LangGraph store can keep user and project memory across separate sessions, while the graph uses that memory to produce incremental research instead of repeating old work.
 
 At this point, Team 1 is a mature, memory-backed research engine. But it only knows about fundamentals. For investment decisions, you also need technical analysis -- price trends, indicators, support/resistance levels.
 
@@ -102,9 +102,9 @@ Every pattern exists because the previous one creates a real limitation:
 | Transition | The problem that forces the next pattern |
 |------------|------------------------------------------|
 | P01 → P02 | Hardcoded tools don't scale. You can't share tools with Claude Code or other teams. |
-| P02 → P03 | Every request starts fresh. Repeated research wastes tokens and time. |
-| P03 → P04 | Memory grows unbounded. Stale facts pollute analysis. |
-| P03 → P05 | A second team arrives. You can't import their code. You need a protocol. |
+| P02 → P03 | Long-running workflows fail mid-run. Restarting from scratch wastes completed work and hides recovery patterns. |
+| P03 → P04 | Durable execution is not memory. The agent can resume a thread, but it still forgets user interests and prior research across sessions. |
+| P04 → P05 | A second team arrives. You can't import their code. You need a protocol. |
 | P05 → P06 | A third team needs data from both others. Sequential calls are too slow. |
 | P06 → P07 | Team 2 moves to a partner org. Implicit trust is gone. |
 | P07 → P08 | New agents appear. Consumers shouldn't need code changes to use them. |
@@ -156,7 +156,7 @@ Two teams would leave half these problems unaddressed.
 
 ### Current: Foundation Tier
 
-Building Patterns 01-04 -- the single-team foundation with orchestration, MCP tools, and persistent memory.
+Building Patterns 01-04 -- the single-team foundation with orchestration, MCP tools, checkpoint recovery, and agent memory.
 
 ### Next: Distribution Tier
 

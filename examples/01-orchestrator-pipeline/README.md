@@ -43,7 +43,7 @@ The primary UX is running from inside the example folder. A repo-root shortcut a
 make example EX=01-orchestrator-pipeline
 ```
 
-If you prefer an HTTP client, use [`endpoints.http`](endpoints.http).
+If you prefer prebuilt requests, use [`endpoints.http`](endpoints.http).
 
 ## What You Get Back
 
@@ -105,152 +105,29 @@ graph TD
     stateGraph -.->|"optional traces"| langsmith["LangSmith"]
 ```
 
-## When to Use / When Not to Use
-
-**Use this pattern when:**
-- You want the simplest real multi-agent architecture that still shows clear orchestration boundaries.
-- You need one service with a few specialized steps and shared typed state.
-- You want a strong teaching or debugging story before adding more infrastructure.
-
-**Avoid this pattern when:**
-- Tools need to be shared across multiple agents, services, or AI clients. That is the motivation for [Pattern 02](../02-mcp-tool-integration/README.md).
-- You need persistence across requests. This pattern starts fresh every time.
-- You need independent deployment, scaling, or trust boundaries between agent groups.
+The architecture is intentionally linear. Pattern 01 is meant to make the orchestration boundaries obvious before the series adds more infrastructure, more protocols, or more runtime concerns.
 
 ## Key Concepts
 
-- **StateGraph**: a typed state object flows through explicit graph nodes and edges.
-- **Focused agents**: each node does one job well instead of carrying one giant all-in-one prompt.
-- **Observable execution**: verbose logs and optional LangSmith traces make every handoff visible.
-- **Graceful degradation**: node-level failures fall back to partial outputs instead of crashing immediately.
+- **Typed state** -- one shared `AgentState` object is the contract between all nodes.
+- **Focused agents** -- each node does one job instead of carrying one giant prompt.
+- **Explicit graph wiring** -- the orchestration is visible in LangGraph edges, not hidden in prompt text.
+- **Graceful degradation** -- weak dependencies can produce partial output instead of collapsing the whole run.
 
 ## Implementation Walkthrough
 
-### Step 1: Define the shared state
+1. Define the shared state in [`src/agents/state.py`](src/agents/state.py). It keeps the contract deliberately small: request input, planner output, research output, and final report.
+2. Define the three focused nodes in [`src/agents/research_planner.py`](src/agents/research_planner.py), [`src/agents/news_scanner.py`](src/agents/news_scanner.py), and [`src/agents/intelligence_compiler.py`](src/agents/intelligence_compiler.py). Each node reads only the fields it needs and returns one partial state update.
+3. Wire the straight-line graph in [`src/agents/graph.py`](src/agents/graph.py). This is the core orchestrator pattern: planner -> scanner -> compiler.
+4. Expose the graph through FastAPI in [`src/app.py`](src/app.py). Startup initializes tracing and the compiled graph, while `POST /run` validates input, invokes the graph, and returns the intermediate artifacts together with the final report.
 
-The state is the contract between agents. Every node reads what it needs and writes one focused output.
-
-```python
-class AgentState(TypedDict, total=False):
-    input: Required[str]
-    plan: str
-    news: str
-    report: str
-```
-
-### Step 2: Build focused async nodes
-
-Every agent follows the same shape: read state, do one job, return a partial update.
-
-The News Scanner is the most interesting node because it combines tool use with an LLM pass and degrades gracefully if search or model calls fail:
-
-```python
-async def news_scanner_node(state: AgentState) -> dict[str, str]:
-    try:
-        search = DuckDuckGoSearchResults(max_results=8, output_format="list")
-        current_year = datetime.now(UTC).year
-        raw_results = await search.ainvoke(
-            f"{state['input']} crypto project news {current_year}"
-        )
-    except Exception as exc:
-        raw_results = f"[Search unavailable: {type(exc).__name__}]"
-
-    llm = get_chat_model()
-    response = await llm.ainvoke([...])
-    return {"news": str(response.content)}
-```
-
-That design keeps the pipeline educational and resilient: a weak dependency produces degraded output, not an unreadable black box failure.
-
-### Step 3: Wire the graph explicitly
-
-Pattern 01 is a straight-line orchestrator pipeline:
-
-```python
-graph = StateGraph(AgentState)
-graph.add_node("research_planner", research_planner_node)
-graph.add_node("news_scanner", news_scanner_node)
-graph.add_node("intelligence_compiler", intelligence_compiler_node)
-
-graph.set_entry_point("research_planner")
-graph.add_edge("research_planner", "news_scanner")
-graph.add_edge("news_scanner", "intelligence_compiler")
-graph.add_edge("intelligence_compiler", END)
-
-compiled_graph = graph.compile()
-```
-
-### Step 4: Expose the graph via FastAPI
-
-The FastAPI app builds the graph at startup, keeps it on `app.state`, and invokes it from `POST /run`.
-
-```python
-@asynccontextmanager
-async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
-    setup_tracing()
-    fastapi_app.state.graph = build_graph()
-    yield
-
-@app.post("/run", response_model=RunResponse)
-async def run(request: RunRequest) -> RunResponse | JSONResponse:
-    result = await app.state.graph.ainvoke({"input": request.input})
-    return RunResponse(
-        report=result.get("report", ""),
-        plan=result.get("plan", ""),
-        news=result.get("news", ""),
-    )
-```
-
-Two API details are worth noticing:
+Two API details matter for the developer experience:
 - `input` is validated by Pydantic and must be between 3 and 500 characters.
-- If graph execution raises an exception, the endpoint returns `502` with `{"error": "pipeline_failed", "detail": "..."}`.
-
-## What You Should See
-
-With `VERBOSE=true`, container logs show each handoff clearly:
-
-```text
-[14:32:01.234] [ResearchPlanner] Planning research for: Research Arbitrum
-[14:32:03.891] [ResearchPlanner] Plan created (245 chars)
-[14:32:03.892] [NewsScanner] Searching for: Research Arbitrum
-[14:32:06.445] [NewsScanner] Got 8 search results
-[14:32:08.901] [NewsScanner] Analysis complete (523 chars)
-[14:32:08.902] [IntelligenceCompiler] Compiling intelligence report
-[14:32:11.678] [IntelligenceCompiler] Report generated (847 chars)
-```
-
-If `LANGSMITH_API_KEY` is set, startup also enables hosted LangSmith tracing under the shared `agent-patterns-lab` project. Public runs add per-example tags and metadata automatically so one project can still be filtered by example, environment, runtime, and provider. If tracing is requested but no key is set, the app logs a clear warning, disables tracing, and keeps running.
-
-## Verification
-
-Use these checks to confirm the example behaves the way the code and tests expect:
-
-```bash
-# Healthy service
-curl http://localhost:8000/health
-
-# Valid request
-curl -X POST http://localhost:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Research the Solana crypto project"}'
-
-# Validation failure (too short)
-curl -X POST http://localhost:8000/run \
-  -H "Content-Type: application/json" \
-  -d '{"input": "ab"}'
-```
-
-Expected behavior:
-- `GET /health` returns `{"status": "ok"}`
-- Valid `POST /run` returns `report`, `plan`, and `news`
-- Invalid input returns `422`
-- Unhandled graph failure returns `502`
+- Graph execution failures return `502` with `{"error": "pipeline_failed", "detail": "..."}` instead of a silent container error.
 
 ## Local Development
 
-Docker is the fastest way to try this example. If you want to work on the code
-locally, `uv` is the workspace tool for syncing dependencies, running tests, and
-checking types.
+Docker is the fastest way to try this example. If you want to work on the code locally, `uv` is the workspace tool for syncing dependencies, running tests, and checking types.
 
 ```bash
 # From the repository root
@@ -263,25 +140,18 @@ uv run python scripts/testing/run_test_suite.py
 uv run python scripts/linting/run_mypy.py
 ```
 
-Use this path when you want to iterate on the codebase itself rather than just
-run the example container.
+Use this path when you want to iterate on the codebase itself rather than just run the example container.
 
-## Exercises
+## What You Have Learned
 
-1. Add a fourth agent between the News Scanner and Intelligence Compiler to fact-check claims before report generation.
-2. Introduce conditional routing so well-known projects take a shorter research path.
-3. Split research into two parallel branches and compare the trade-off against this simple sequential flow.
+- How to express a simple multi-agent workflow as a typed LangGraph `StateGraph`.
+- How to split planning, tool use, and synthesis into separate async nodes with clear handoffs.
+- How to expose a LangGraph pipeline through a minimal FastAPI boundary with useful intermediate artifacts.
+- Why a simple orchestrator pattern is a good teaching baseline before adding more protocols or runtime complexity.
 
-## Trade-offs
+**Next:** [Pattern 02: MCP Tool Integration](../02-mcp-tool-integration/README.md) extends this pipeline with a second entry point and turns the full capability into an MCP tool so AI clients can call it directly.
 
-| Advantage | Limitation |
-|-----------|-----------|
-| Very easy to understand and run | Sequential execution adds latency |
-| Clear boundaries between responsibilities | All agents live in one process |
-| Great observability for learning and debugging | Every request starts from scratch |
-| Tool use is easy to add inside a node | Tools are hardcoded, not standardized |
-
-This last limitation is the reason [Pattern 02](../02-mcp-tool-integration/README.md) exists. Once tools need to be reused by multiple agents or external AI clients, direct Python tool calls stop scaling.
+If this project helps you, consider giving it a [star on GitHub](https://github.com/ksopyla/agent-patterns-lab).
 
 ## Further Reading
 

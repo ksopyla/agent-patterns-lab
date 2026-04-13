@@ -48,8 +48,8 @@ graph TD
     subgraph foundation ["Foundation Tier"]
         P01["P01: Orchestrator Pipeline"]
         P02["P02: MCP Tool Integration"]
-        P03["P03: Persistent Memory"]
-        P04["P04: Memory Lifecycle\n(enrichment)"]
+        P03["P03: Checkpoint Recovery\nand Resilience"]
+        P04["P04: Agent Memory\nand Knowledge"]
     end
     subgraph distribution ["Distribution Tier"]
         P05["P05: Distributed A2A"]
@@ -63,17 +63,14 @@ graph TD
     P01 --> P02
     P02 --> P03
     P03 --> P04
-    P03 --> P05
-    P04 -.-> P05
+    P04 --> P05
     P05 --> P06
     P06 --> P07
     P07 --> P08
     P08 --> P09
 ```
 
-**Main path**: P01 -> P02 -> P03 -> P05 -> P06 -> P07 -> P08 -> P09
-
-**Optional enrichment**: P04 branches off P03 (can be skipped without breaking the progression)
+**Main path**: P01 -> P02 -> P03 -> P04 -> P05 -> P06 -> P07 -> P08 -> P09
 
 **Team introduction timeline**:
 
@@ -195,15 +192,15 @@ graph TD
 
 ---
 
-### Pattern 03: Persistent Memory
+### Pattern 03: Checkpoint Recovery and Resilience
 
-**Folder:** `examples/03-persistent-memory/`
+**Folder:** `examples/03-checkpoint-recovery/`
 
-**Goal:** Add persistent state across conversations using LangGraph's checkpointer backed by PostgreSQL. When a user asks about a crypto project a second time, the system remembers previous research and provides incremental updates instead of starting from scratch.
+**Goal:** Add durable execution to the Pattern 02 pipeline using LangGraph's PostgreSQL-backed checkpointer. When a long-running research run fails midway, the system resumes from the last successful checkpoint instead of starting over.
 
-**What it solves:** In Patterns 01-02, every request starts fresh. For a research platform, this wastes tokens and time -- if you researched Arbitrum yesterday, you should build on that knowledge, not repeat it.
+**What it solves:** Pattern 02 already has a realistic failure surface: three external API calls, multiple LLM invocations, and a fan-out/fan-in graph. If `project_profiler` times out after `news_scanner` and `community_analyst` succeed, you currently lose completed work and repay the token and latency cost on retry. Checkpointing fixes resiliency, not memory.
 
-**Team focus:** Team 1 (Intelligence) -- same 5 agents, now with persistent memory.
+**Team focus:** Team 1 (Intelligence) -- same 5 agents, now with durable execution, thread continuity, and human checkpoints.
 
 **Architecture:**
 
@@ -211,49 +208,61 @@ graph TD
 graph TD
     User --> FastAPI["Agent Service\n(FastAPI :8000)"]
     FastAPI --> Pipeline["LangGraph Pipeline\n+ Checkpointer"]
-    Pipeline --> PG["PostgreSQL\n(conversation state + research cache)"]
-    Pipeline --> CoinGecko["CoinGecko API"]
-    Pipeline --> DDG["DuckDuckGo\n(web search)"]
     ClaudeDesktop["Claude Desktop"] -->|MCP| MCP["crypto-intelligence\nMCP (:8001)"]
     MCP --> Pipeline
+    Pipeline --> PG["PostgreSQL\n(checkpoints)"]
+    Pipeline --> CoinGecko["CoinGecko API"]
+    Pipeline --> DDG["DuckDuckGo\n(web search)"]
+    Pipeline --> HITL["Human checkpoint\ninterrupt()/resume"]
 ```
 
 **Key concepts:**
 
-- LangGraph checkpointer with PostgreSQL backend
-- Thread-based conversation management (each project = a thread)
-- Research result caching and incremental updates
-- State persistence across agent restarts
-- Docker Compose with PostgreSQL container
+- LangGraph `PostgresSaver` for durable checkpoints
+- Stable `thread_id` as the resume handle for a research workflow
+- Resume-after-failure semantics: retry only the failed node, not the full graph
+- Human-in-the-loop with `interrupt()` and `Command(resume=...)`
+- Idempotent node design and graceful degradation around external API failures
+- Docker Compose with PostgreSQL as durable workflow state
 
-**libs/common additions:** `agent_common.memory` -- checkpointer setup utilities
+**libs/common additions:** `agent_common.persistence` -- PostgreSQL pool and checkpointer helpers
 
 **Builds on:** Pattern 02
 
 ---
 
-### Pattern 04: Memory Lifecycle Management (Enrichment)
+### Pattern 04: Agent Memory and Knowledge
 
-**Folder:** `examples/04-memory-lifecycle/`
+**Folder:** `examples/04-agent-memory/`
 
-**Goal:** Manage growing agent memory with consolidation, expiration, and hierarchical organization. Introduce a Memory Refiner agent that runs periodically to keep the knowledge base accurate and compact.
+**Goal:** Add actual cross-session memory using LangGraph `PostgresStore` plus a memory layer such as Honcho for richer user and project understanding. The system should remember which coins a user tracks, what they care about, and what was learned in previous research threads.
 
-**What it solves:** After many research sessions, memory grows unbounded. Stale facts ("BTC price is $67k") pollute new analyses. The system needs to distinguish between ephemeral data (prices, news) and durable knowledge (project launch date, team composition).
+**What it solves:** Pattern 03 makes the workflow resilient, but it is still amnesiac. A resumed thread is not the same thing as long-term memory. Users expect the agent to remember repeated interests ("I keep tracking Arbitrum and Base"), preferences ("focus on developer traction"), and prior research findings across separate sessions.
 
-**Note:** This is an enrichment pattern. The main progression continues from Pattern 03 to Pattern 05. Skip this if your priority is distributed architecture.
+**Team focus:** Team 1 (Intelligence) -- same 5 agents, now augmented with episodic and semantic memory.
+
+**Architecture:**
+
+```mermaid
+graph TD
+    User --> FastAPI["Agent Service\n(FastAPI :8000)"]
+    FastAPI --> Pipeline["LangGraph Pipeline\n+ Checkpointer + Store"]
+    ClaudeDesktop["Claude Desktop"] -->|MCP| MCP["crypto-intelligence\nMCP (:8001)"]
+    MCP --> Pipeline
+    Pipeline --> PG["PostgreSQL\n(checkpoints + BaseStore)"]
+    Pipeline --> Honcho["Honcho\n(memory service)"]
+    Pipeline --> CoinGecko["CoinGecko API"]
+    Pipeline --> DDG["DuckDuckGo\n(web search)"]
+```
 
 **Key concepts:**
 
-- Memory Refiner agent (consolidates and prunes the knowledge base)
-- Fact TTL: timestamped facts with expiration policies
-  - Price data: 1-hour TTL
-  - News: 7-day TTL
-  - Project fundamentals: no expiration
-- Hierarchical memory tiers:
-  - Working memory (current conversation context)
-  - Episodic memory (past research sessions)
-  - Semantic memory (consolidated, long-term knowledge)
-- Memory compaction strategies
+- `PostgresStore` / `BaseStore` for cross-thread memory
+- User memory namespaces such as tracked coins, watchlists, and research preferences
+- Project memory namespaces such as prior summaries, open risks, and last-reviewed timestamps
+- Incremental research: query planning informed by previous findings
+- Honcho as a production-oriented memory service for agent and user representations
+- Memory freshness policies: separate stable facts from volatile market data
 
 **Builds on:** Pattern 03
 
@@ -310,7 +319,7 @@ graph TD
 
 **libs/common additions:** `agent_common.a2a` -- A2A protocol client/server helpers
 
-**Builds on:** Pattern 03
+**Builds on:** Pattern 04
 
 ---
 

@@ -1,0 +1,28 @@
+### Health
+GET http://localhost:8000/health
+
+### Start a new thread
+POST http://localhost:8000/run
+Content-Type: application/json
+
+{
+    "input": "Research the Arbitrum crypto project"
+}
+
+### Start with an explicit thread ID
+POST http://localhost:8000/run
+Content-Type: application/json
+
+{
+    "input": "Research the Arbitrum crypto project",
+    "thread_id": "arb-demo-thread"
+}
+
+### Resume an interrupted thread
+POST http://localhost:8000/run/resume
+Content-Type: application/json
+
+{
+    "thread_id": "arb-demo-thread",
+    "selected_coin_id": "arbitrum"
+}

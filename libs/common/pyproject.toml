@@ -7,8 +7,10 @@ dependencies = [
     "langsmith>=0.3",
     "langchain-openai>=0.3",
     "langchain-anthropic>=0.3",
+    "langgraph-checkpoint-postgres",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "psycopg[binary,pool]",
 ]
 
 [build-system]

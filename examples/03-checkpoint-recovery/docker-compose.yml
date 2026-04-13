@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: agent_patterns
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres  # pragma: allowlist secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pattern03-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_patterns"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  crypto-intelligence-mcp:
+    build:
+      context: ../..
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        PACKAGE_NAME: example-03-checkpoint-recovery
+        EXAMPLE_PYPROJECT: examples/03-checkpoint-recovery/pyproject.toml
+        EXAMPLE_SRC: examples/03-checkpoint-recovery/src/
+    command: ["uvicorn", "src.mcp_servers.crypto_intelligence:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8001:8000"
+    env_file:
+      - ../../.env
+    environment:
+      - VERBOSE=${VERBOSE:-true}
+      - POSTGRES_URI=postgresql://postgres:postgres@postgres:5432/agent_patterns?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: infra/docker/base/Dockerfile.agent
+      args:
+        PACKAGE_NAME: example-03-checkpoint-recovery
+        EXAMPLE_PYPROJECT: examples/03-checkpoint-recovery/pyproject.toml
+        EXAMPLE_SRC: examples/03-checkpoint-recovery/src/
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../.env
+    environment:
+      - VERBOSE=${VERBOSE:-true}
+      - POSTGRES_URI=postgresql://postgres:postgres@postgres:5432/agent_patterns?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pattern03-pgdata:

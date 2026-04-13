@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__crypto-intelligence__research_crypto_project"
+    ]
+  }
+}
