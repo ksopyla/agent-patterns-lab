@@ -1,7 +1,7 @@
 """Intelligence Compiler agent -- synthesizes all research into a structured report.
 
 Reads:  state["input"], state["project_name"], state["coin_ticker"],
-        state["plan"], state["news"], state["profile"], state["community"]
+        state["news"], state["profile"], state["community"]
 Writes: state["report"]
 
 This is the fan-in node that waits for all parallel research branches to

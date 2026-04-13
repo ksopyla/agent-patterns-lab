@@ -94,8 +94,8 @@ For failure recovery, call `POST /run` again with the same `thread_id`. For huma
 |------|---------|
 | Pattern role | Introduces durable execution and human checkpoints |
 | Team | Team 1: Intelligence |
-| Agents | Research Planner, News Scanner, Project Profiler, Community Analyst, Intelligence Compiler |
-| Graph | Same fan-out/fan-in graph as Pattern 02 |
+| Agents | Research Planner, Project Verifier, Project Selector, News Scanner, Project Profiler, Community Analyst, Intelligence Compiler |
+| Graph | Extends P02 fan-out/fan-in with verifier + selector before parallel branches |
 | New runtime behavior | PostgreSQL-backed checkpoints, retry-after-failure, interrupt/resume |
 | REST endpoints | `POST /run`, `POST /run/resume` (minimal -- thread inspection is MCP) |
 | MCP tools | `research_crypto_project`, `get_research_status`, `list_research_threads`, `delete_research_thread` |
@@ -118,14 +118,14 @@ graph TD
     RestApi --> Service["Checkpointed execution service"]
     Mcp --> Service
     Mcp -->|"get_research_status\nlist_research_threads\ndelete_research_thread"| Checkpoint["LangGraph checkpoint state"]
-    Service --> Graph["LangGraph graph\nplanner -> [news | profile | community] -> compiler"]
+    Service --> Graph["LangGraph graph\nplanner -> verifier -> selector -> [news | profile | community] -> compiler"]
     Graph --> Postgres["PostgreSQL\ncheckpoints"]
     Graph --> Hitl["interrupt() / resume\nambiguous project resolution"]
     Graph --> CoinGecko["CoinGecko API"]
     Graph --> DuckDuckGo["DuckDuckGo search"]
 ```
 
-The graph topology is intentionally unchanged from Pattern 02 because the change here is operational, not structural. The new moving parts sit around the graph: a durable checkpointer and a transport layer that knows the difference between retrying a failed run and resuming an interrupted one. Thread inspection is exposed as MCP tools that derive status from LangGraph's checkpoint state directly -- no separate status table.
+The graph extends Pattern 02's fan-out/fan-in with two new nodes before the parallel branches: `project_verifier` checks whether CoinGecko returns a single unambiguous match, and `project_selector` calls `interrupt()` when multiple matches exist so the human can choose the right project before research continues. Around the graph sit the new operational pieces: a durable PostgreSQL checkpointer and a service layer that knows the difference between retrying a failed run and resuming an interrupted one. Thread inspection is exposed as MCP tools that derive status from LangGraph's checkpoint state directly -- no separate status table.
 
 ## Key Concepts
 
@@ -217,7 +217,7 @@ uv run python scripts/linting/run_mypy.py
 
 ## What You Have Learned
 
-- How to add durable execution to an existing LangGraph pipeline without changing its core topology.
+- How to add durable execution to an existing LangGraph pipeline with minimal graph changes.
 - How to model retry-after-failure and resume-after-interrupt as separate execution paths around one shared graph.
 - How to use `interrupt()` and `Command(resume=...)` to make ambiguous external matches explicit and safe.
 - How to expose checkpoint inspection as MCP tools instead of adding REST CRUD around workflow state.
