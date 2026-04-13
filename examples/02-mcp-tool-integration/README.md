@@ -8,7 +8,7 @@ Useful context:
 - [Curriculum](../../docs/curriculum.md)
 - [Vision & Roadmap](../../docs/vision.md)
 - [Previous pattern: Orchestrator Pipeline](../01-orchestrator-pipeline/README.md)
-- [Next pattern: Persistent Memory](../03-persistent-memory/README.md)
+- [Next pattern: Checkpoint Recovery and Resilience](../03-checkpoint-recovery/README.md)
 
 ## Quick Start
 
@@ -33,6 +33,8 @@ curl -X POST http://localhost:8000/run \
 ```
 
 The MCP entry point is at `localhost:8001/sse` -- connect Claude Code, Cursor, or Claude Desktop (see [Connect Your MCP Client](#connect-your-mcp-client) below).
+
+If you prefer prebuilt REST requests, use [`endpoints.http`](endpoints.http).
 
 ## What You Get Back
 
@@ -101,48 +103,18 @@ The MCP server and REST API share the same Docker image but run as **separate co
 
 ## Key Concepts
 
-- **Outcome-oriented MCP tool** -- expose `research_crypto_project` (the full pipeline), not raw API wrappers like `get_coin_price`
-- **Parallel fan-out/fan-in** -- three research nodes run concurrently via LangGraph `add_edge`; compiler waits for all three
-- **Data source ownership** -- each node owns one external source (DuckDuckGo or CoinGecko), no duplication
-- **Graceful degradation** -- CoinGecko retry with backoff; search and LLM failures produce partial output, not crashes
-- **Synchronous execution boundary** -- REST and MCP both wait for the full pipeline result and fail fast after 120 seconds instead of hanging indefinitely
+- **Outcome-oriented MCP tool** -- expose `research_crypto_project`, not raw API wrappers like `get_coin_price`.
+- **Parallel fan-out/fan-in** -- three research nodes run concurrently and the compiler waits for all three.
+- **Data source ownership** -- each node owns one external source, which keeps responsibilities clean.
+- **Synchronous execution boundary** -- REST and MCP both wait for the full result and fail fast after 120 seconds.
 
 ## Implementation Walkthrough
 
-### MCP Server
-
-The full implementation is in [`src/mcp_servers/crypto_intelligence.py`](src/mcp_servers/crypto_intelligence.py) -- ~30 lines. It builds the graph once and wraps it as a single MCP tool:
-
-```python
-mcp = FastMCP("crypto-intelligence", host="0.0.0.0", port=8000)
-_graph = build_graph()
-
-@mcp.tool()
-async def research_crypto_project(query: str) -> str:
-    result = await _graph.ainvoke({"input": query})
-    return result.get("report", "")
-```
-
-### Parallel Graph
-
-The graph uses LangGraph's native fan-out: after `research_planner`, three edges fire simultaneously to `news_scanner`, `project_profiler`, and `community_analyst`. The compiler waits for all three via fan-in. See [`src/agents/graph.py`](src/agents/graph.py) for the wiring and the [LangGraph branching docs](https://langchain-ai.github.io/langgraph/how-tos/branching/) for the pattern.
-
-The planner extracts `project_name` and `coin_ticker` via LLM and generates search queries so downstream nodes don't pass raw user input to external APIs. See [`src/agents/research_planner.py`](src/agents/research_planner.py).
-
-### Docker Compose
-
-Both containers use the same image -- only the command differs. See [`docker-compose.yml`](docker-compose.yml):
-
-```yaml
-services:
-  crypto-intelligence-mcp:
-    command: ["uvicorn", "src.mcp_servers.crypto_intelligence:app", ...]
-    ports: ["8001:8000"]
-
-  agent:
-    # default CMD: uvicorn src.app:app
-    ports: ["8000:8000"]
-```
+1. Define the expanded Team 1 state in [`src/agents/state.py`](src/agents/state.py). Pattern 02 grows beyond Pattern 01 by adding planner-generated identifiers and branch-specific outputs such as `project_name`, `coin_ticker`, `news_queries`, `community_queries`, `profile`, and `community`.
+2. Define the five agent nodes in [`src/agents/research_planner.py`](src/agents/research_planner.py), [`src/agents/news_scanner.py`](src/agents/news_scanner.py), [`src/agents/project_profiler.py`](src/agents/project_profiler.py), [`src/agents/community_analyst.py`](src/agents/community_analyst.py), and [`src/agents/intelligence_compiler.py`](src/agents/intelligence_compiler.py). The important design choice is data-source ownership: DuckDuckGo stays in the search nodes and CoinGecko stays in the profiler.
+3. Wire the parallel fan-out / fan-in graph in [`src/agents/graph.py`](src/agents/graph.py). After `research_planner`, LangGraph launches the three research branches in parallel and waits until all of them finish before the compiler runs.
+4. Expose the same graph through two entry points: REST in [`src/app.py`](src/app.py) and MCP in [`src/mcp_servers/crypto_intelligence.py`](src/mcp_servers/crypto_intelligence.py). Shared timeout and tracing metadata live in [`src/runtime.py`](src/runtime.py), which keeps both transports aligned.
+5. Package both transports with one Docker image in [`docker-compose.yml`](docker-compose.yml). The agent and MCP server are separate containers with different commands, but they serve the same capability.
 
 ## Connect Your MCP Client
 
@@ -186,26 +158,16 @@ uv run python scripts/testing/run_test_suite.py
 uv run python scripts/linting/run_mypy.py
 ```
 
-## Exercises
+## What You Have Learned
 
-1. **Add a lightweight MCP tool**: Expose `get_crypto_price(project_name)` that skips the full pipeline and returns just the current price via CoinGecko.
-2. **Add a fourth parallel branch**: Create a `tokenomics_analyst` node that fans out alongside the other three research nodes.
+- How to expose an agent capability through MCP instead of only through a REST endpoint.
+- How to use LangGraph fan-out / fan-in to parallelize independent research branches.
+- How to keep one graph behind two transports without duplicating business logic.
+- Why outcome-oriented tools are a better MCP interface than exposing raw API plumbing.
 
-## Trade-offs
+**Next:** [Pattern 03: Checkpoint Recovery and Resilience](../03-checkpoint-recovery/README.md) keeps the same Team 1 graph but adds durable execution, retry-after-failure, and human-in-the-loop interrupts for ambiguous project selection.
 
-| Advantage | Limitation |
-|-----------|-----------|
-| Any MCP client gets the full agent capability | MCP server runs the full pipeline per call (cost/latency) |
-| Parallel execution cuts wall-clock time vs. sequential | Three concurrent DuckDuckGo/CoinGecko calls may hit rate limits faster |
-| Claude Desktop is the "UI" -- no custom frontend | Streaming partial results is not supported (Pattern 06 adds this) |
-| Same graph, two entry points -- no code duplication | Two containers for the same image |
-| REST exposes intermediate artifacts for debugging; MCP exposes only the final report | Entry points are intentionally asymmetric, so clients see different response shapes |
-| Internal data sources are hidden from clients | CoinGecko rate limits apply (30 req/min free tier; retry with backoff mitigates) |
-| Timeout prevents hung requests from running forever | Background jobs / `202 Accepted` polling are not implemented in this pattern to keep focus on MCP integration |
-
-Both entry points currently execute the pipeline synchronously. In a production system with longer-running research, a background-task or job-queue design such as `POST /run -> 202 Accepted -> GET /tasks/{id}` would be reasonable, but that extra lifecycle machinery would distract from the MCP lesson here.
-
-This last limitation -- every request starts from scratch -- is the reason [Pattern 03](../03-persistent-memory/README.md) exists.
+If this project helps you, consider giving it a [star on GitHub](https://github.com/ksopyla/agent-patterns-lab).
 
 ## Further Reading
 
