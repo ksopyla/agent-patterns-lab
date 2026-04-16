@@ -4,11 +4,12 @@ Automatically maintained by continual learning. Do not edit manually.
 
 ## Learned User Preferences
 
-- Use PowerShell syntax for all terminal commands (Windows 11 environment)
+- Use zsh syntax for all terminal commands (MacOS environment)
 - Use `uv` for all Python package and environment management, never pip or pyenv
 - Use conventional commit format: `type(scope): description` — see `git-workflow` skill
 - Use `gh` CLI for GitHub operations (PRs, issues, actions); GitHub MCP as alternative
-- Write multi-line strings to temp files in PowerShell (no heredoc support)
+- Use heredocs for multi-line strings in zsh (native support)
+- Always `git fetch origin` and check remote branches before assuming code is missing locally
 - Prefer async-first Python with type hints on all functions
 - Run tests with `uv run python scripts/testing/run_test_suite.py` or `uv run pytest`
 - Run type checks with `uv run python scripts/linting/run_mypy.py`, never raw `mypy` across examples
@@ -24,6 +25,9 @@ Automatically maintained by continual learning. Do not edit manually.
 - Branches: `dev` (working), `main` (stable)
 - Monorepo: multiple `src/` packages exist across examples -- tools like mypy must run per-directory to avoid duplicate module conflicts
 - CI commands in `.github/workflows/ci.yml` must use the same wrapper scripts as local dev (single source of truth)
+- Pattern 03 is `examples/03-checkpoint-recovery/` — PostgreSQL checkpointing via `langgraph-checkpoint-postgres`, 7 graph nodes, HITL disambiguation
+- Persistence helpers: `libs/common/src/agent_common/persistence.py`
+- Patterns 01-03 are complete and merged to `main`; next on roadmap is P04 (Agent Memory), then P05 (Distributed A2A)
 
 ## Pattern 02 Architecture Decisions
 
@@ -37,20 +41,16 @@ Automatically maintained by continual learning. Do not edit manually.
 
 ## Rules vs Skills Architecture
 
-Rules (always-applied, minimal context):
-- `local-environment` — OS, shell, uv, gh, repo basics
-- `project-vision` — one-liner + pointers to `docs/curriculum.md` and `docs/vision.md`
-- `tech-stack` — Python/ruff/linting commands, Docker base image, project structure
-- `testing-gate` — test requirements + pointer to `tester` skill
-- `code-quality-gate` (glob-scoped) — quick checklist for `examples/*/src/**/*.py`
+Rules (minimal, pointer-style):
+- `project` (always) — vision, canonical commands, key constraints, skill pointers
+- `code-quality-gate` (glob: `examples/*/src/**/*.py`) — checklist for agent source code
 
 Skills (loaded on demand):
-- `git-workflow` — branching, commits, PRs (was a rule, moved to skill)
-- `langgraph-example-implementation` — LangGraph, FastAPI, LangSmith, verbose mode conventions and templates
+- `git-workflow` — branching, commits, PRs
+- `langgraph-example-implementation` — LangGraph, FastAPI, LangSmith conventions and templates
 - `example-scaffolder` — folder structure, Docker compose, pyproject templates
-- `docker-debugger` — Docker troubleshooting and MCP tools
-- `tester` — test strategy, pytest patterns, CI commands
-- `runtime-verifier` — live Docker verification and smoke tests
+- `tester` — test strategy, pytest patterns, LangGraph test recipes
+- `runtime-verifier` — live Docker verification, troubleshooting, smoke tests, LangSmith traces
 - `example-readme-writer` — README structure and Mermaid diagrams
 - `engineering-tracker` — CHANGELOG maintenance
 - `agent-patterns-advisor` — architecture and pattern selection

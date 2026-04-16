@@ -154,9 +154,15 @@ Two teams would leave half these problems unaddressed.
 
 ## Roadmap
 
-### Current: Foundation Tier
+### Completed
 
-Building Patterns 01-04 -- the single-team foundation with orchestration, MCP tools, checkpoint recovery, and agent memory.
+- **Pattern 01: Orchestrator Pipeline** -- three-agent LangGraph pipeline with FastAPI and Docker
+- **Pattern 02: MCP Tool Integration** -- five-agent parallel pipeline exposed via MCP and REST
+- **Pattern 03: Checkpoint Recovery** -- PostgreSQL-backed durable execution with HITL disambiguation
+
+### Current: Foundation Tier (completing)
+
+**Pattern 04: Agent Memory and Knowledge** -- cross-session memory with PostgresStore and Honcho, completing the Foundation Tier.
 
 ### Next: Distribution Tier
 

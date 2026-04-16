@@ -10,13 +10,15 @@ All patterns share a single compelling domain -- **crypto project intelligence**
 
 Built in Patterns 01-04. Focuses on non-technical, qualitative signals.
 
-| Agent | Responsibility |
-|-------|---------------|
-| Research Planner | Analyzes the crypto project request, creates a structured research plan |
-| News Scanner | Searches the web for recent news, announcements, partnerships |
-| Project Profiler | Researches project goals, whitepaper, technology, roadmap, team/founders |
-| Community Analyst | Monitors X/Twitter sentiment, community discussions, GitHub activity |
-| Intelligence Compiler | Synthesizes all findings into a structured fundamentals report |
+| Agent | Responsibility | Introduced |
+|-------|---------------|------------|
+| Research Planner | Analyzes the crypto project request, creates a structured research plan | P01 |
+| News Scanner | Searches the web for recent news, announcements, partnerships | P01 |
+| Project Profiler | Researches project goals, whitepaper, technology, roadmap, team/founders | P02 |
+| Community Analyst | Monitors X/Twitter sentiment, community discussions, GitHub activity | P02 |
+| Intelligence Compiler | Synthesizes all findings into a structured fundamentals report | P01 |
+| Project Verifier | Validates CoinGecko matches and detects ambiguous project names | P03 |
+| Project Selector | Pauses for human clarification when multiple coin matches exist | P03 |
 
 ### Team 2: Technical Analysis
 
@@ -200,7 +202,7 @@ graph TD
 
 **What it solves:** Pattern 02 already has a realistic failure surface: three external API calls, multiple LLM invocations, and a fan-out/fan-in graph. If `project_profiler` times out after `news_scanner` and `community_analyst` succeed, you currently lose completed work and repay the token and latency cost on retry. Checkpointing fixes resiliency, not memory.
 
-**Team focus:** Team 1 (Intelligence) -- same 5 agents, now with durable execution, thread continuity, and human checkpoints.
+**Team focus:** Team 1 (Intelligence) -- expands to 7 graph nodes: the 5 research agents plus Project Verifier and Project Selector for CoinGecko disambiguation and human-in-the-loop checkpoints.
 
 **Architecture:**
 
