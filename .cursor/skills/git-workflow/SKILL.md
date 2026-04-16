@@ -13,6 +13,10 @@ description: >-
 - `dev` -- integration branch for in-progress work
 - Feature branches off `dev` when needed: `feat/NN-short-name`
 
+## Commiting and pushing
+When user ask to commit, try to group changes into coheren commits groups, try to do not mix different changes in the same commit.
+Check the chat history to identify related changes.
+
 ## Commit Messages
 
 Use conventional commits with optional scope:
@@ -34,5 +38,4 @@ Examples:
 ## Pull Requests
 - PRs merge `dev` → `main` after a set of related changes
 - Use `gh` CLI (preferred) or GitHub MCP for PR creation
-- Write PR body to a temp file and use `--body-file` (PowerShell has no heredocs)
-- Use `@" ... "@` here-strings only for simple cases (no special chars)
+- Use heredocs to pass PR body inline, or `--body-file` for complex content

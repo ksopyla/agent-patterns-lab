@@ -9,7 +9,7 @@ alwaysApply: true
 
 - Terminology: "Pattern", not "Lesson". Folder references: `examples/NN-name/`.
 - Domain: **Crypto Intelligence Platform** with three agent teams (Intelligence, Technical Analysis, Trading Signals).
-- Patterns progress P01 → P02 → P03 → P04 → P05 → P06 → P07 → P08 → P09 (all required).
+- Patterns progress P01 → P02 → P03 → P04 → P05 → P06 → P07 → P08 → P09 (P04 optional).
 - Full details: `docs/curriculum.md` and `docs/vision.md`
 
 ## Canonical Commands
@@ -27,5 +27,5 @@ alwaysApply: true
 - `ruff` for linting/formatting, `pytest` with `asyncio_mode = "auto"`
 - Each example: `examples/NN-name/` with `pyproject.toml`, `docker-compose.yml`, `src/`, `tests/`
 - Shared code: `libs/common/` (import as `agent_common`)
-- Docker base image: `infra/docker/base/Dockerfile.agent` -- see `example-scaffolder` and `docker-debugger` skills
+- Docker base image: `infra/docker/base/Dockerfile.agent` -- see `example-scaffolder` and `runtime-verifier` skills
 - LangGraph, FastAPI, LangSmith conventions: see `langgraph-example-implementation` skill
